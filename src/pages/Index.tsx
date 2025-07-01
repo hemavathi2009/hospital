@@ -67,7 +67,7 @@ const Index = () => {
       title: 'Cardiology',
       description: 'Expert care for heart conditions with state-of-the-art diagnostics.',
       icon: <Heart className="w-8 h-8 text-primary" />,
-      image: 'https://images.unsplash.com/photo-1603398737722-a6b2a5f13075?w=500&h=350&fit=crop',
+      image: 'https://images.unsplash.com/photo-1628348070889-cb656235b4eb?w=500&h=350&fit=crop',
       doctors: 12,
       services: 8
     },

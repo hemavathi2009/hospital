@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { addDoc, collection } from 'firebase/firestore';
+import { addDoc, collection, query, getDocs, where } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 
@@ -74,54 +74,131 @@ const AppointmentBooking: React.FC = () => {
   
   const navigate = useNavigate();
   
-  // Mock departments data (replace with real data fetching)
-  const [departments, setDepartments] = useState([
-    { id: 'cardio', name: 'Cardiology', description: 'Heart and cardiovascular system specialists.' },
-    { id: 'neuro', name: 'Neurology', description: 'Specialists in nervous system disorders.' },
-    { id: 'ortho', name: 'Orthopedics', description: 'Bone, joint, and muscle specialists.' },
-    { id: 'derma', name: 'Dermatology', description: 'Skin, hair, and nail specialists.' },
-    { id: 'pedia', name: 'Pediatrics', description: 'Medical care for infants, children, and teenagers.' },
-    { id: 'general', name: 'General Medicine', description: 'Primary care for adults across a wide range of health issues.' },
-  ]);
+  // State for departments fetched from doctors collection
+  const [departments, setDepartments] = useState<Array<{ id: string, name: string, description: string }>>([]);
+  const [loadingDepartments, setLoadingDepartments] = useState(true);
   
-  // Mock doctors data (replace with real data fetching)
-  const [doctors, setDoctors] = useState([
-    { 
-      id: 'doc1', 
-      name: 'John Smith', 
-      specialty: 'Cardiology',
-      department: 'cardio',
-      experience: '15 years',
-      rating: 4.8 
-    },
-    { 
-      id: 'doc2', 
-      name: 'Emily Johnson', 
-      specialty: 'Neurology',
-      department: 'neuro',
-      experience: '10 years',
-      rating: 4.9 
-    },
-    { 
-      id: 'doc3', 
-      name: 'Michael Brown', 
-      specialty: 'Orthopedics',
-      department: 'ortho',
-      experience: '12 years',
-      rating: 4.7 
-    }
-  ]);
+  // Fetch departments from doctors in Firebase
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      setLoadingDepartments(true);
+      try {
+        const doctorsRef = collection(db, 'doctors');
+        const doctorsSnapshot = await getDocs(query(doctorsRef));
+        
+        // Extract unique departments from doctors
+        const uniqueDepartments = new Map();
+        
+        doctorsSnapshot.forEach(doc => {
+          const doctorData = doc.data();
+          if (doctorData.department) {
+            // Use department as both id and name if not already added
+            const deptId = doctorData.department.toLowerCase().replace(/\s+/g, '-');
+            
+            if (!uniqueDepartments.has(deptId)) {
+              uniqueDepartments.set(deptId, {
+                id: deptId,
+                name: doctorData.department,
+                description: `${doctorData.department} specialists and services`
+              });
+            }
+          }
+          
+          // Also consider specialty as a department option
+          if (doctorData.specialty && doctorData.specialty !== doctorData.department) {
+            const specialtyId = doctorData.specialty.toLowerCase().replace(/\s+/g, '-');
+            
+            if (!uniqueDepartments.has(specialtyId)) {
+              uniqueDepartments.set(specialtyId, {
+                id: specialtyId,
+                name: doctorData.specialty,
+                description: `${doctorData.specialty} specialists and services`
+              });
+            }
+          }
+        });
+        
+        // Convert Map to array
+        const departmentsArray = Array.from(uniqueDepartments.values());
+        setDepartments(departmentsArray);
+        
+        console.log('Fetched departments:', departmentsArray);
+      } catch (error) {
+        console.error('Error fetching departments:', error);
+        toast.error('Failed to load departments');
+      } finally {
+        setLoadingDepartments(false);
+      }
+    };
+    
+    fetchDepartments();
+  }, []);
   
+  // Replace mock doctors with state for real doctors
+  const [doctors, setDoctors] = useState<Array<{
+    id: string;
+    name: string;
+    specialty: string;
+    department?: string;
+    experience?: string;
+    rating?: number;
+    image?: string;
+  }>>([]);
+  
+  // Add useEffect to fetch doctors from Firebase
+  useEffect(() => {
+    const fetchDoctors = async () => {
+      try {
+        const doctorsRef = collection(db, 'doctors');
+        const doctorsSnapshot = await getDocs(query(doctorsRef, where('verified', '!=', false)));
+        
+        const doctorsData = doctorsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data(),
+          name: doc.data().name || 'Unknown Doctor',
+          specialty: doc.data().specialty || 'General Medicine'
+        }));
+        
+        setDoctors(doctorsData);
+        console.log('Fetched doctors:', doctorsData.length);
+      } catch (error) {
+        console.error('Error fetching doctors:', error);
+        toast.error('Failed to load doctors');
+      }
+    };
+    
+    fetchDoctors();
+  }, []);
+
   // Filtered doctors based on selected department
   const [filteredDoctors, setFilteredDoctors] = useState(doctors);
   
   // Update filtered doctors when department changes
   useEffect(() => {
     if (appointmentData.department) {
-      setFilteredDoctors(doctors.filter(doctor => doctor.department === appointmentData.department));
+      const selectedDepartment = departments.find(dept => dept.id === appointmentData.department);
+      const departmentName = selectedDepartment?.name.toLowerCase() || '';
+      
+      // Filter doctors by matching either department or specialty
+      const filteredDocs = doctors.filter(doctor => {
+        const doctorDept = doctor.department?.toLowerCase() || '';
+        const doctorSpecialty = doctor.specialty?.toLowerCase() || '';
+        
+        return (
+          doctorDept.includes(departmentName) || 
+          departmentName.includes(doctorDept) ||
+          doctorSpecialty.includes(departmentName) || 
+          departmentName.includes(doctorSpecialty)
+        );
+      });
+      
+      // Fall back to all doctors if none match the filter
+      setFilteredDoctors(filteredDocs.length > 0 ? filteredDocs : doctors);
+    } else {
+      setFilteredDoctors(doctors);
     }
-  }, [appointmentData.department]);
-
+  }, [appointmentData.department, departments, doctors]);
+  
   // Handle department selection
   const handleDepartmentSelect = (departmentId: string) => {
     const selectedDepartment = departments.find(dept => dept.id === departmentId);
@@ -134,6 +211,14 @@ const AppointmentBooking: React.FC = () => {
         doctor: '',
         doctorName: ''
       }));
+      
+      // Filter doctors for this department
+      const filteredDocs = doctors.filter(doctor => 
+        doctor.department?.toLowerCase() === selectedDepartment.name.toLowerCase() ||
+        doctor.specialty?.toLowerCase() === selectedDepartment.name.toLowerCase()
+      );
+      setFilteredDoctors(filteredDocs);
+      
       setCurrentStep(2);
     }
   };
@@ -245,7 +330,7 @@ const AppointmentBooking: React.FC = () => {
             departments={departments}
             selectedDepartment={appointmentData.department}
             onSelect={handleDepartmentSelect}
-            loading={loading.departments}
+            loading={loadingDepartments}
           />
         );
       case 2:
@@ -256,6 +341,7 @@ const AppointmentBooking: React.FC = () => {
             onSelect={handleDoctorSelect}
             onBack={handleBack}
             loading={loading.doctors}
+            departmentName={appointmentData.departmentName} // Pass departmentName
           />
         );
       case 3:
@@ -355,7 +441,55 @@ const AppointmentBooking: React.FC = () => {
                 transition={{ duration: 0.3 }}
                 className="bg-card border border-border rounded-2xl p-6 md:p-8 shadow-card"
               >
-                {renderStep()}
+                {currentStep === 1 && (
+                  <StepDepartment
+                    departments={departments}
+                    selectedDepartment={appointmentData.department}
+                    onSelect={handleDepartmentSelect}
+                    loading={loadingDepartments}
+                  />
+                )}
+                {currentStep === 2 && (
+                  <StepDoctor
+                    doctors={filteredDoctors}
+                    selectedDoctor={appointmentData.doctor}
+                    onSelect={handleDoctorSelect}
+                    onBack={handleBack}
+                    loading={loading.doctors}
+                    departmentName={appointmentData.departmentName} // Pass departmentName
+                  />
+                )}
+                {currentStep === 3 && (
+                  <StepDateTime
+                    doctorId={appointmentData.doctor}
+                    selectedDate={appointmentData.date}
+                    selectedTime={appointmentData.time}
+                    onSelect={handleDateTimeSelect}
+                    onBack={handleBack}
+                  />
+                )}
+                {currentStep === 4 && (
+                  <StepPersonalInfo
+                    formData={appointmentData}
+                    onSubmit={handlePersonalInfoSubmit}
+                    onBack={handleBack}
+                  />
+                )}
+                {currentStep === 5 && (
+                  <StepPayment
+                    appointmentData={appointmentData}
+                    onComplete={handlePaymentComplete}
+                    onBack={handleBack}
+                  />
+                )}
+                {currentStep === 6 && (
+                  <StepSummary
+                    appointmentData={appointmentData}
+                    onSubmit={handleFinalSubmit}
+                    onBack={handleBack}
+                    isSubmitting={loading.submission}
+                  />
+                )}
               </motion.div>
             </>
           ) : (

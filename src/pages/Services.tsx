@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { collection, getDocs, query, orderBy, onSnapshot } from 'firebase/firestore';
+import { collection, getDocs, query, orderBy, onSnapshot, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { motion } from 'framer-motion';
 import { Search, Filter, ChevronDown, X } from 'lucide-react';
+import { Service } from '../types/service';
+import { getVisibleServices } from '../lib/serviceFirebase';
 
 // Components
 import Navigation from '../components/organisms/Navigation';
@@ -11,14 +13,7 @@ import Card from '../components/atoms/Card';
 import Button from '../components/atoms/Button';
 import Input from '../components/atoms/Input';
 import ServiceCard from '../components/molecules/ServiceCard';
-import ServiceModal from '@/components/organisms/ServiceModal';
-// import ServiceModal from '../components/organisms/ServiceModal';
-// Make sure the file exists at this path or update the path if necessary
-// import ServiceModal from '../components/molecules/ServiceModal';
-// If the file exists with a different extension or casing, update the path accordingly, for example:
-// import ServiceModal from '../components/molecules/ServiceModal.tsx';
-// or correct the casing if it's 'servicemodal' or 'ServiceModal/index.tsx', etc.
-// import FloatingChat from '../components/molecules/FloatingChat';
+import ServiceModal from '../components/organisms/ServiceModal';
 
 // Types
 interface Department {
@@ -41,16 +36,39 @@ interface Department {
 const Services: React.FC = () => {
   const [departments, setDepartments] = useState<Department[]>([]);
   const [filteredDepartments, setFilteredDepartments] = useState<Department[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
+  const [filteredServices, setFilteredServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
   const [categories, setCategories] = useState<string[]>(['All']);
   const [selectedDepartment, setSelectedDepartment] = useState<Department | null>(null);
+  const [selectedService, setSelectedService] = useState<Service | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [isServiceModalOpen, setIsServiceModalOpen] = useState(false);
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   
   const filterRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
+
+  // Fetch services from Firebase using our service helper
+  useEffect(() => {
+    const fetchServices = async () => {
+      try {
+        setLoading(true);
+        const servicesData = await getVisibleServices();
+        setServices(servicesData);
+        setFilteredServices(servicesData);
+        console.log('Fetched services:', servicesData.length);
+      } catch (error) {
+        console.error("Error fetching services:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    
+    fetchServices();
+  }, []);
 
   // Fetch departments from Firebase
   useEffect(() => {
@@ -82,10 +100,8 @@ const Services: React.FC = () => {
         setDepartments(fetchedDepartments);
         setFilteredDepartments(fetchedDepartments);
         setCategories(Array.from(uniqueCategories));
-        setLoading(false);
       } catch (error) {
         console.error("Error fetching departments:", error);
-        setLoading(false);
       }
     };
     
@@ -108,11 +124,41 @@ const Services: React.FC = () => {
       
       setDepartments(facilitiesData);
       setFilteredDepartments(facilitiesData);
-      setLoading(false);
       console.log('Real-time facilities update:', facilitiesData.length);
     }, (error) => {
       console.error("Error fetching facilities:", error);
-      setLoading(false);
+    });
+
+    // Clean up listener on component unmount
+    return () => unsubscribe();
+  }, []);
+  
+  // Set up real-time listener for services
+  useEffect(() => {
+    const servicesRef = collection(db, 'services');
+    
+    // Option 1: Split into two queries - first get all services, then filter in code
+    const q = query(
+      servicesRef,
+      orderBy('order', 'asc')
+    );
+    
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const servicesData = snapshot.docs
+        .map(doc => {
+          const data = doc.data() as Service;
+          return {
+            id: doc.id,
+            ...data
+          };
+        })
+        .filter(service => service.visible === true);
+      
+      setServices(servicesData);
+      setFilteredServices(servicesData);
+      console.log('Real-time services update:', servicesData.length);
+    }, (error) => {
+      console.error("Error fetching services:", error);
     });
 
     // Clean up listener on component unmount
@@ -143,16 +189,79 @@ const Services: React.FC = () => {
     
     setFilteredDepartments(results);
   }, [searchQuery, activeCategory, departments]);
+  
+  // Filter services based on search query and active category
+  useEffect(() => {
+    let results = services;
+    
+    // Filter by search query
+    if (searchQuery) {
+      const lowerQuery = searchQuery.toLowerCase();
+      results = results.filter(service => 
+        service.name.toLowerCase().includes(lowerQuery) || 
+        service.description.toLowerCase().includes(lowerQuery) ||
+        service.shortDescription?.toLowerCase().includes(lowerQuery) ||
+        (service.features && service.features.some(feature => 
+          feature.toLowerCase().includes(lowerQuery)
+        ))
+      );
+    }
+    
+    // Filter by category
+    if (activeCategory !== 'All') {
+      results = results.filter(service => service.category === activeCategory);
+    }
+    
+    setFilteredServices(results);
+  }, [searchQuery, activeCategory, services]);
 
-  // Handle learn more click
+  // Update categories when departments or services change
+  useEffect(() => {
+    const uniqueCategories = new Set<string>();
+    uniqueCategories.add('All');
+    
+    // Add department categories
+    departments.forEach(dept => {
+      if (dept.category) {
+        uniqueCategories.add(dept.category);
+      }
+    });
+    
+    // Add service categories
+    services.forEach(service => {
+      if (service.category) {
+        uniqueCategories.add(service.category);
+      }
+    });
+    
+    setCategories(Array.from(uniqueCategories));
+  }, [departments, services]);
+
+  // Handle learn more click for departments
   const handleLearnMore = (department: Department) => {
     setSelectedDepartment(department);
     setIsModalOpen(true);
   };
 
+  // Handle service card click to open service details
+  const handleServiceClick = (service: Service) => {
+    setSelectedService(service);
+    setIsServiceModalOpen(true);
+  };
+
   // Handle book appointment click
   const handleBookAppointment = (departmentId: string) => {
     navigate('/appointment-booking', { state: { departmentId, departmentName: departments.find(d => d.id === departmentId)?.name } });
+  };
+
+  // Handle book service appointment
+  const handleBookServiceAppointment = (serviceId: string) => {
+    navigate('/appointment-booking', { 
+      state: { 
+        serviceId, 
+        serviceName: services.find(s => s.id === serviceId)?.name 
+      } 
+    });
   };
 
   // Close modal when clicking outside
@@ -250,7 +359,7 @@ const Services: React.FC = () => {
               className="shadow-xl hover:shadow-accent/30 transition-all duration-300"
             >
               <ChevronDown className="w-5 h-5 mr-2" />
-              Explore Departments
+              Explore Services
             </Button>
           </motion.div>
         </div>
@@ -331,7 +440,7 @@ const Services: React.FC = () => {
             <div className="min-h-[400px] flex items-center justify-center">
               <div className="flex flex-col items-center">
                 <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin"></div>
-                <p className="mt-4 text-muted-foreground">Loading departments...</p>
+                <p className="mt-4 text-muted-foreground">Loading services...</p>
               </div>
             </div>
           ) : (
@@ -342,47 +451,74 @@ const Services: React.FC = () => {
               viewport={{ once: true, amount: 0.1 }}
               className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8"
             >
-              {filteredDepartments.length > 0 ? (
-                filteredDepartments.map((department) => (
-                  <motion.div key={department.id} variants={itemVariants}>
-                    <ServiceCard
-                      service={{
-                        id: department.id,
-                        title: department.name,
-                        description: department.shortDescription,
-                        icon: department.icon ? (
-                          <img 
-                            src={department.icon} 
-                            alt={department.name} 
-                            className="w-8 h-8 object-contain"
-                          />
-                        ) : (
-                          <div className="w-8 h-8 bg-primary/20 rounded-full" />
-                        ),
-                        features: department.features || [],
-                        available24h: department.available24h
-                      }}
-                      onLearnMore={() => handleLearnMore(department)}
-                      onBookAppointment={() => handleBookAppointment(department.id)}
-                    />
-                  </motion.div>
-                ))
-              ) : (
-                <div className="col-span-full flex flex-col items-center justify-center py-12">
-                  <div className="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mb-4">
-                    <Search className="w-8 h-8 text-muted-foreground" />
-                  </div>
-                  <h3 className="text-xl font-medium text-foreground">No departments found</h3>
-                  <p className="text-muted-foreground mt-2">Try adjusting your search or filters</p>
+              {/* Show services first */}
+              {filteredServices.length > 0 && filteredServices.map((service) => (
+                <motion.div key={service.id} variants={itemVariants}>
+                  <ServiceCard
+                    service={{
+                      id: service.id,
+                      title: service.name,
+                      description: service.shortDescription || service.description,
+                      icon: service.iconUrl ? (
+                        <img 
+                          src={service.iconUrl} 
+                          alt={service.name} 
+                          className="w-8 h-8 object-contain"
+                        />
+                      ) : (
+                        <div className="w-8 h-8 bg-primary/20 rounded-full" />
+                      ),
+                      features: service.features || [],
+                      available24h: service.available24h
+                    }}
+                    onLearnMore={() => handleServiceClick(service)}
+                    onBookAppointment={() => handleBookServiceAppointment(service.id)}
+                  />
+                </motion.div>
+              ))}
+              
+              {/* Then show departments */}
+              {filteredDepartments.length > 0 && filteredServices.length === 0 && filteredDepartments.map((department) => (
+                <motion.div key={department.id} variants={itemVariants}>
+                  <ServiceCard
+                    service={{
+                      id: department.id,
+                      title: department.name,
+                      description: department.shortDescription,
+                      icon: department.icon ? (
+                        <img 
+                          src={department.icon} 
+                          alt={department.name} 
+                          className="w-8 h-8 object-contain"
+                        />
+                      ) : (
+                        <div className="w-8 h-8 bg-primary/20 rounded-full" />
+                      ),
+                      features: department.features || [],
+                      available24h: department.available24h
+                    }}
+                    onLearnMore={() => handleLearnMore(department)}
+                    onBookAppointment={() => handleBookAppointment(department.id)}
+                  />
+                </motion.div>
+              ))}
+              
+              {/* Show "no results" if both are empty */}
+              {filteredServices.length === 0 && filteredDepartments.length === 0 && (
+                <div className="col-span-3 p-12 text-center bg-muted/30 rounded-xl border border-border">
+                  <h3 className="text-xl font-semibold mb-3">No services match your search</h3>
+                  <p className="text-muted-foreground mb-6">
+                    Try adjusting your search or filter to find what you're looking for.
+                  </p>
                   <Button 
-                    variant="outline" 
-                    className="mt-6"
+                    variant="primary"
                     onClick={() => {
                       setSearchQuery('');
                       setActiveCategory('All');
                     }}
                   >
-                    Clear all filters
+                    <ChevronDown className="w-5 h-5 mr-2" />
+                    Show All Services
                   </Button>
                 </div>
               )}
@@ -413,7 +549,7 @@ const Services: React.FC = () => {
         </div>
       </section>
 
-      {/* Service Modal */}
+      {/* Department Modal */}
       {isModalOpen && selectedDepartment && (
         <ServiceModal
           department={selectedDepartment}
@@ -422,8 +558,111 @@ const Services: React.FC = () => {
         />
       )}
 
-      {/* Floating Chat Widget */}
-      {/* <FloatingChat /> */}
+      {/* Service Modal for services section */}
+      {isServiceModalOpen && selectedService && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-background rounded-lg w-full max-w-3xl max-h-[90vh] overflow-y-auto">
+            <div className="relative">
+              {/* Service Image Header */}
+              <div className="h-56 bg-gradient-to-r from-primary to-secondary overflow-hidden">
+                {selectedService.imageUrl ? (
+                  <img 
+                    src={selectedService.imageUrl} 
+                    alt={selectedService.name}
+                    className="w-full h-full object-cover"
+                  />
+                ) : (
+                  <div className="h-full flex items-center justify-center">
+                    <div className="text-white text-xl">No Image Available</div>
+                  </div>
+                )}
+              </div>
+              
+              {/* Close button */}
+              <Button
+                variant="outline"
+                size="sm"
+                className="absolute top-4 right-4 rounded-full bg-background/80 backdrop-blur-sm hover:bg-background"
+                onClick={() => setIsServiceModalOpen(false)}
+              >
+                <X className="w-4 h-4" />
+              </Button>
+            </div>
+            
+            <div className="p-6">
+              <h2 className="text-2xl font-bold text-foreground mb-4">{selectedService.name}</h2>
+              <p className="text-muted-foreground mb-6">{selectedService.description}</p>
+              
+              {/* Duration */}
+              {selectedService.duration && (
+                <div className="mb-4">
+                  <h3 className="text-lg font-semibold mb-2">Duration</h3>
+                  <p className="text-muted-foreground">
+                    Approximately {selectedService.duration} minutes
+                  </p>
+                </div>
+              )}
+              
+              {/* Preparation instructions */}
+              {selectedService.preparationInstructions && (
+                <div className="mb-4">
+                  <h3 className="text-lg font-semibold mb-2">Preparation Instructions</h3>
+                  <p className="text-muted-foreground">
+                    {selectedService.preparationInstructions}
+                  </p>
+                </div>
+              )}
+              
+              {/* Features */}
+              {selectedService.features && selectedService.features.length > 0 && (
+                <div className="mb-6">
+                  <h3 className="text-lg font-semibold mb-2">Features</h3>
+                  <ul className="list-disc list-inside space-y-1">
+                    {selectedService.features.map((feature, index) => (
+                      <li key={index} className="text-muted-foreground">{feature}</li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+              
+              {/* Availability */}
+              <div className="flex items-center justify-between mb-6">
+                <div>
+                  <span className="text-sm text-muted-foreground">Availability:</span>
+                  <span className="ml-2 font-medium">
+                    {selectedService.available24h ? '24/7 Available' : 'During Hospital Hours'}
+                  </span>
+                </div>
+                
+                {selectedService.category && (
+                  <div>
+                    <span className="text-sm text-muted-foreground">Category:</span>
+                    <span className="ml-2 font-medium">{selectedService.category}</span>
+                  </div>
+                )}
+              </div>
+              
+              {/* Appointment button */}
+              <div className="flex justify-end">
+                <Button
+                  variant="primary"
+                  onClick={() => {
+                    setIsServiceModalOpen(false);
+                    navigate('/appointment-booking', { 
+                      state: { 
+                        serviceId: selectedService.id,
+                        serviceName: selectedService.name
+                      }
+                    });
+                  }}
+                >
+                  Book Appointment
+                </Button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

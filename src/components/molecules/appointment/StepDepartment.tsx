@@ -1,7 +1,8 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Building, Heart, Brain, Bone, Baby, PenTool, Stethoscope } from 'lucide-react';
+import { Building, Heart, Brain, Bone, Baby, PenTool, Stethoscope, Loader } from 'lucide-react';
 import Card from '../../atoms/Card';
+import Button from '../../atoms/Button';
 
 interface Department {
   id: string;
@@ -55,6 +56,29 @@ const StepDepartment: React.FC<StepDepartmentProps> = ({
         <div className="flex flex-col items-center">
           <div className="w-12 h-12 border-4 border-primary border-t-transparent rounded-full animate-spin mb-4"></div>
           <p className="text-muted-foreground">Loading departments...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (departments.length === 0) {
+    return (
+      <div className="min-h-[400px] flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 bg-muted/30 rounded-full flex items-center justify-center mx-auto mb-4">
+            <Building className="w-8 h-8 text-muted-foreground" />
+          </div>
+          <h3 className="text-xl font-medium text-foreground mb-3">No Departments Available</h3>
+          <p className="text-muted-foreground max-w-md mx-auto mb-6">
+            There are currently no medical departments available for booking. 
+            Please contact us directly for assistance with your appointment.
+          </p>
+          <Button 
+            variant="primary"
+            onClick={() => window.location.href = '/contact'}
+          >
+            Contact Us
+          </Button>
         </div>
       </div>
     );

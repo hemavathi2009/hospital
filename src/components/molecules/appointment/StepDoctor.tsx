@@ -1,6 +1,6 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { ArrowLeft, User, Star } from 'lucide-react';
+import { ArrowLeft, User, Star, Stethoscope } from 'lucide-react';
 import Card from '../../atoms/Card';
 import Button from '../../atoms/Button';
 
@@ -20,6 +20,7 @@ interface StepDoctorProps {
   onSelect: (doctorId: string) => void;
   onBack: () => void;
   loading: boolean;
+  departmentName?: string; // Added to show selected department
 }
 
 const StepDoctor: React.FC<StepDoctorProps> = ({
@@ -27,7 +28,8 @@ const StepDoctor: React.FC<StepDoctorProps> = ({
   selectedDoctor,
   onSelect,
   onBack,
-  loading
+  loading,
+  departmentName
 }) => {
   // Animation variants
   const containerVariants = {
@@ -71,7 +73,9 @@ const StepDoctor: React.FC<StepDoctorProps> = ({
         <div>
           <h2 className="text-2xl font-bold text-foreground mb-1">Select Doctor</h2>
           <p className="text-muted-foreground">
-            Choose a specialist for your appointment
+            {departmentName 
+              ? `Choose a ${departmentName} specialist for your appointment` 
+              : 'Choose a specialist for your appointment'}
           </p>
         </div>
       </div>
@@ -79,11 +83,14 @@ const StepDoctor: React.FC<StepDoctorProps> = ({
       {doctors.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-12 text-center">
           <div className="w-16 h-16 bg-muted rounded-full flex items-center justify-center mb-4">
-            <User className="w-8 h-8 text-muted-foreground" />
+            <Stethoscope className="w-8 h-8 text-muted-foreground" />
           </div>
           <h3 className="text-lg font-medium text-foreground mb-2">No Doctors Available</h3>
           <p className="text-muted-foreground max-w-md mb-6">
-            There are no doctors available for this department. Please select another department or try again later.
+            {departmentName 
+              ? `There are no doctors available in the ${departmentName} department.` 
+              : 'There are no doctors available for this department.'} 
+            Please select another department or try again later.
           </p>
           <Button onClick={onBack} variant="outline">
             Go Back

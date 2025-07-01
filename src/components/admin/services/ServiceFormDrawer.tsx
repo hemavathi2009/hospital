@@ -7,9 +7,31 @@ import {
 import Button from '../../atoms/Button';
 import Input from '../../atoms/Input';
 import { Service, ServiceFormData } from '../../../types/service';
-import { addService, updateService } from '../../../lib/serviceFirebase';
-import { uploadToCloudinary } from '../../../lib/cloudinary';
+// Update the import to only include updateService
+import { updateService } from '../../../lib/serviceFirebase';
+import { uploadImage } from '../../../utils/imageUpload';
+import { getPublicIdFromUrl, deleteFromCloudinary } from '../../../lib/cloudinary';
 import ServicePreview from './ServicePreview';
+
+// Extend the imported ServiceFormData to include the additional properties we need
+interface ExtendedServiceFormData extends ServiceFormData {
+  imageUrl?: string;
+  iconUrl?: string;
+  order: number;
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
+// Create a local implementation of addService
+const addService = async (serviceData: ExtendedServiceFormData): Promise<string> => {
+  // Generate a temporary ID (you might want to use a UUID library)
+  const tempId = `service_${Date.now()}`;
+  
+  // Call updateService with the new ID
+  await updateService(tempId, serviceData);
+  
+  return tempId;
+};
 
 interface ServiceFormDrawerProps {
   isOpen: boolean;
@@ -24,7 +46,7 @@ const ServiceFormDrawer: React.FC<ServiceFormDrawerProps> = ({
   service,
   onSave
 }) => {
-  const [formData, setFormData] = useState<ServiceFormData>({
+  const [formData, setFormData] = useState<ExtendedServiceFormData>({
     name: '',
     description: '',
     shortDescription: '',
@@ -32,7 +54,8 @@ const ServiceFormDrawer: React.FC<ServiceFormDrawerProps> = ({
     visible: true,
     category: '',
     features: [],
-    available24h: false
+    available24h: false,
+    order: 0 // Add default order
   });
   
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -57,7 +80,8 @@ const ServiceFormDrawer: React.FC<ServiceFormDrawerProps> = ({
         visible: service.visible !== undefined ? service.visible : true,
         category: service.category || '',
         features: service.features || [],
-        available24h: service.available24h || false
+        available24h: service.available24h || false,
+        order: service.order // Add the order from service
       });
       
       if (service.imageUrl) {
@@ -77,7 +101,8 @@ const ServiceFormDrawer: React.FC<ServiceFormDrawerProps> = ({
         visible: true,
         category: '',
         features: [],
-        available24h: false
+        available24h: false,
+        order: 0 // Default order for new service
       });
       setImagePreview(null);
       setIconPreview(null);
@@ -161,55 +186,51 @@ const ServiceFormDrawer: React.FC<ServiceFormDrawerProps> = ({
       let imageUrl = service?.imageUrl || '';
       let iconUrl = service?.iconUrl || '';
       
-      // Upload new image if selected
+      // Upload new image if selected using Cloudinary
       if (imageFile) {
-        // Simulate upload progress for better UX
-        const interval = setInterval(() => {
-          setUploadProgress(prev => {
-            if (prev >= 90) {
-              clearInterval(interval);
-              return 90;
-            }
-            return prev + 10;
-          });
-        }, 300);
+        const uploadResult = await uploadImage(
+          imageFile,
+          (progress) => setUploadProgress(progress),
+          'services'
+        );
         
-        try {
-          const uploadResult = await uploadToCloudinary(imageFile);
-          imageUrl = uploadResult.secureUrl;
-          clearInterval(interval);
-          setUploadProgress(100);
-        } catch (err) {
-          clearInterval(interval);
-          setUploadError('Failed to upload image. Please try again.');
+        if (!uploadResult.success) {
+          setUploadError(uploadResult.error || 'Failed to upload image');
           setUploading(false);
           setSaving(false);
           return;
         }
+        
+        imageUrl = uploadResult.secureUrl;
       }
       
       // Upload new icon if selected
       if (iconFile) {
-        try {
-          const uploadResult = await uploadToCloudinary(iconFile);
-          iconUrl = uploadResult.secureUrl;
-        } catch (err) {
-          setUploadError('Failed to upload icon. Please try again.');
+        const uploadResult = await uploadImage(
+          iconFile,
+          undefined,
+          'service-icons'
+        );
+        
+        if (!uploadResult.success) {
+          setUploadError(uploadResult.error || 'Failed to upload icon');
           setUploading(false);
           setSaving(false);
           return;
         }
+        
+        iconUrl = uploadResult.secureUrl;
       }
       
       // Create or update service in Firebase
       if (service) {
         // Update existing service
         await updateService(service.id, {
-          ...formData,
+          ...(formData as ExtendedServiceFormData),
           imageUrl,
           iconUrl,
           updatedAt: new Date()
-        });
+        } as ExtendedServiceFormData);
         
         onSave({
           ...service,
@@ -219,23 +240,31 @@ const ServiceFormDrawer: React.FC<ServiceFormDrawerProps> = ({
           updatedAt: new Date()
         });
       } else {
-        // Create new service
-        const newServiceId = await addService({
-          ...formData,
-        });
-        
-        // Update with image URLs
-        await updateService(newServiceId, {
-          imageUrl,
-          iconUrl
-        });
-        
-        onSave({
-          id: newServiceId,
+        // Create new service - Fix by including imageUrl and iconUrl in the initial call
+        const newServiceData: ExtendedServiceFormData = {
           ...formData,
           imageUrl,
           iconUrl,
-          order: 0, // Will be set by the addService function
+          createdAt: new Date(),
+          updatedAt: new Date()
+        };
+        
+        const newServiceId = await addService(newServiceData);
+        
+        // Make sure we're providing a complete Service object to onSave
+        onSave({
+          id: newServiceId,
+          name: formData.name,
+          description: formData.description,
+          shortDescription: formData.shortDescription,
+          iconType: formData.iconType,
+          visible: formData.visible,
+          category: formData.category,
+          features: formData.features,
+          available24h: formData.available24h,
+          imageUrl,
+          iconUrl,
+          order: formData.order,
           createdAt: new Date(),
           updatedAt: new Date()
         });

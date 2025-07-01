@@ -1,44 +1,14 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Upload, AlertCircle, Star, User, Mail, Phone, MapPin, CheckCircle } from 'lucide-react';
-import Button from '../../../components/atoms/Button';
-import Input from '../../../components/atoms/Input';
-import { AvailabilityCalendar } from './AvailabilityCalendar';
+import { 
+  X, Upload, AlertCircle, Trash2, Mail, Phone, Star,
+  Languages, Award, MapPin, Stethoscope, User, UserCheck, Info
+} from 'lucide-react';
+import Button from '../../atoms/Button';
+import Input from '../../atoms/Input';
+import { uploadImage } from '../../../utils/imageUpload';
 
-interface Doctor {
-  id: string;
-  name: string;
-  specialty: string;
-  department?: string;
-  experience?: string;
-  rating?: number;
-  location?: string;
-  bio?: string;
-  image?: string;
-  email?: string;
-  phone?: string;
-  education?: string[];
-  languages?: string[];
-  awards?: string[];
-  availability?: Record<string, string[]>;
-  createdAt?: any;
-  verified?: boolean;
-}
-
-interface DoctorFormDrawerProps {
-  isOpen: boolean;
-  onClose: () => void;
-  doctorData: Doctor | null;
-  onSubmit: (e: React.FormEvent) => Promise<void>;
-  isSubmitting: boolean;
-  uploadProgress: number;
-  uploadError: string | null;
-  handleImageChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  imagePreview: string | null;
-  resetForm: () => void;
-}
-
-// Add these specialty and department option arrays
+// Specialty and department options
 const specialtyOptions = [
   "Cardiology",
   "Neurology",
@@ -77,6 +47,40 @@ const departmentOptions = [
   "General Medicine"
 ];
 
+// Define Doctor interface
+interface Doctor {
+  id?: string;
+  name: string;
+  specialty: string;
+  department?: string;
+  experience?: string;
+  rating?: number;
+  location?: string;
+  bio?: string;
+  image?: string;
+  email?: string;
+  phone?: string;
+  education?: string[];
+  languages?: string[];
+  awards?: string[];
+  verified?: boolean;
+  createdAt?: any;
+  updatedAt?: any;
+}
+
+interface DoctorFormDrawerProps {
+  isOpen: boolean;
+  onClose: () => void;
+  doctorData: Doctor | null;
+  onSubmit: (e: React.FormEvent, formData: Partial<Doctor>) => void; // Update to pass formData
+  isSubmitting: boolean;
+  uploadProgress: number;
+  uploadError: string | null;
+  handleImageChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  imagePreview: string | null;
+  resetForm: () => void;
+}
+
 const DoctorFormDrawer: React.FC<DoctorFormDrawerProps> = ({
   isOpen,
   onClose,
@@ -89,511 +93,616 @@ const DoctorFormDrawer: React.FC<DoctorFormDrawerProps> = ({
   imagePreview,
   resetForm
 }) => {
-  const [availability, setAvailability] = useState<Record<string, string[]>>({});
+  // Form state
+  const [formValues, setFormValues] = useState<Partial<Doctor>>({
+    name: '',
+    specialty: '',
+    department: '',
+    experience: '',
+    location: '',
+    bio: '',
+    email: '',
+    phone: '',
+    rating: 4.5,
+    education: [],
+    languages: [],
+    awards: [],
+    verified: false
+  });
   const [activeTab, setActiveTab] = useState('basic');
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
-  // Effect to handle form reset when closing
+  // Update form values when editing a doctor
   useEffect(() => {
-    if (!isOpen) {
-      // Wait for animation to complete before resetting form
-      setTimeout(() => {
-        resetForm();
-        setActiveTab('basic');
-      }, 300);
-    }
-  }, [isOpen, resetForm]);
-  
-  // Effect to set availability when editing a doctor
-  useEffect(() => {
-    if (doctorData?.availability) {
-      setAvailability(doctorData.availability);
+    if (doctorData) {
+      setFormValues({
+        name: doctorData.name || '',
+        specialty: doctorData.specialty || '',
+        department: doctorData.department || '',
+        experience: doctorData.experience || '',
+        location: doctorData.location || '',
+        bio: doctorData.bio || '',
+        email: doctorData.email || '',
+        phone: doctorData.phone || '',
+        rating: doctorData.rating || 4.5,
+        education: doctorData.education || [],
+        languages: doctorData.languages || [],
+        awards: doctorData.awards || [],
+        verified: doctorData.verified || false
+      });
     } else {
-      setAvailability({});
+      setFormValues({
+        name: '',
+        specialty: '',
+        department: '',
+        experience: '',
+        location: '',
+        bio: '',
+        email: '',
+        phone: '',
+        rating: 4.5,
+        education: [],
+        languages: [],
+        awards: [],
+        verified: false
+      });
     }
-  }, [doctorData]);
-
-  // Handle availability updates from calendar
-  const handleAvailabilityChange = (newAvailability: Record<string, string[]>) => {
-    setAvailability(newAvailability);
+    setActiveTab('basic');
+  }, [doctorData, isOpen]);
+  
+  // Handle input changes
+  const handleInputChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
+  ) => {
+    const { name, value, type } = e.target;
     
-    // Update the form data with new availability
-    document.getElementById('availability-input')?.setAttribute(
-      'value', 
-      JSON.stringify(newAvailability)
+    if (name === 'education' || name === 'languages' || name === 'awards') {
+      setFormValues(prev => ({
+        ...prev,
+        [name]: value.split('\n').filter(item => item.trim() !== '')
+      }));
+    } else if (type === 'checkbox') {
+      setFormValues(prev => ({
+        ...prev,
+        [name]: (e.target as HTMLInputElement).checked
+      }));
+    } else if (name === 'rating') {
+      setFormValues(prev => ({
+        ...prev,
+        [name]: parseFloat(value)
+      }));
+    } else {
+      setFormValues(prev => ({
+        ...prev,
+        [name]: value
+      }));
+    }
+  };
+  
+  // Rating component
+  const Rating = ({ value, onChange }: { value: number, onChange: (newRating: number) => void }) => {
+    return (
+      <div className="flex items-center">
+        {[...Array(5)].map((_, i) => (
+          <Star
+            key={i}
+            className={`w-6 h-6 cursor-pointer ${i < value ? 'text-yellow-500 fill-current' : 'text-gray-300'}`}
+            onClick={() => onChange(i + 1)}
+          />
+        ))}
+        <span className="ml-2 text-sm text-muted-foreground">({value})</span>
+      </div>
     );
+  };
+  
+  // Handle form submission with form data
+  const handleFormSubmit = (e: React.FormEvent) => {
+    // Pass the current formValues to the parent's onSubmit
+    onSubmit(e, formValues);
   };
 
   return (
     <AnimatePresence>
       {isOpen && (
-        <motion.div
-          className="fixed inset-0 z-50 flex"
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          transition={{ duration: 0.2 }}
-        >
+        <div className="fixed inset-0 z-50">
           {/* Backdrop */}
-          <div 
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }}
             className="absolute inset-0 bg-black/50 backdrop-blur-sm"
             onClick={onClose}
-          ></div>
+          />
           
           {/* Drawer */}
           <motion.div
-            className="absolute right-0 top-0 h-full max-w-3xl w-full bg-background shadow-xl overflow-hidden flex flex-col"
             initial={{ x: '100%' }}
             animate={{ x: 0 }}
             exit={{ x: '100%' }}
             transition={{ type: 'spring', damping: 30, stiffness: 300 }}
+            className="absolute right-0 top-0 h-full w-full max-w-3xl bg-background border-l border-border shadow-2xl"
           >
-            {/* Header */}
-            <div className="p-6 border-b border-border flex items-center justify-between sticky top-0 z-10 bg-background">
-              <h2 className="text-2xl font-bold text-foreground">
-                {doctorData ? 'Edit Doctor' : 'Add New Doctor'}
-              </h2>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={onClose}
-                disabled={isSubmitting}
-              >
-                <X className="w-5 h-5" />
-              </Button>
-            </div>
-            
-            {/* Tab Navigation */}
-            <div className="px-6 border-b border-border bg-background">
-              <div className="flex space-x-6">
+            <div className="flex flex-col h-full">
+              {/* Header */}
+              <div className="p-6 border-b border-border flex items-center justify-between sticky top-0 z-10 bg-background">
+                <h2 className="text-2xl font-bold">
+                  {doctorData ? 'Edit Doctor' : 'Add New Doctor'}
+                </h2>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={onClose}
+                  disabled={isSubmitting}
+                  className="rounded-full"
+                >
+                  <X className="w-5 h-5" />
+                </Button>
+              </div>
+              
+              {/* Tabs */}
+              <div className="flex border-b border-border">
                 <button
-                  className={`py-3 px-1 border-b-2 transition-colors ${
-                    activeTab === 'basic' 
-                      ? 'border-primary text-primary font-medium'
-                      : 'border-transparent text-muted-foreground hover:text-foreground'
-                  }`}
+                  type="button"
                   onClick={() => setActiveTab('basic')}
+                  className={`px-6 py-3 font-medium text-sm transition-colors ${
+                    activeTab === 'basic'
+                      ? 'border-b-2 border-primary text-primary'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
                 >
-                  Basic Information
+                  Basic Info
                 </button>
                 <button
-                  className={`py-3 px-1 border-b-2 transition-colors ${
-                    activeTab === 'details' 
-                      ? 'border-primary text-primary font-medium'
-                      : 'border-transparent text-muted-foreground hover:text-foreground'
-                  }`}
+                  type="button"
                   onClick={() => setActiveTab('details')}
+                  className={`px-6 py-3 font-medium text-sm transition-colors ${
+                    activeTab === 'details'
+                      ? 'border-b-2 border-primary text-primary'
+                      : 'text-muted-foreground hover:text-foreground'
+                  }`}
                 >
-                  Details & Bio
+                  Qualifications
                 </button>
                 <button
-                  className={`py-3 px-1 border-b-2 transition-colors ${
-                    activeTab === 'availability' 
-                      ? 'border-primary text-primary font-medium'
-                      : 'border-transparent text-muted-foreground hover:text-foreground'
+                  type="button"
+                  onClick={() => setActiveTab('contact')}
+                  className={`px-6 py-3 font-medium text-sm transition-colors ${
+                    activeTab === 'contact'
+                      ? 'border-b-2 border-primary text-primary'
+                      : 'text-muted-foreground hover:text-foreground'
                   }`}
-                  onClick={() => setActiveTab('availability')}
                 >
-                  Availability
+                  Contact
                 </button>
               </div>
-            </div>
-            
-            {/* Form */}
-            <div className="flex-1 overflow-y-auto p-6">
-              <form id="doctorForm" onSubmit={onSubmit} className="space-y-6">
-                {/* Basic Information */}
-                <div className={activeTab === 'basic' ? 'block' : 'hidden'}>
-                  {/* Image Upload */}
-                  <div className="mb-8">
-                    <label className="block text-sm font-medium text-foreground mb-2">
-                      Doctor Photo
-                    </label>
-                    <div className="flex items-center space-x-6">
-                      <div className="w-32 h-32 rounded-full overflow-hidden border-2 border-border bg-muted/20 flex items-center justify-center relative">
-                        {imagePreview ? (
-                          <img 
-                            src={imagePreview} 
-                            alt="Doctor Preview" 
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <User className="w-12 h-12 text-muted-foreground" />
-                        )}
+              
+              <div className="flex-grow overflow-y-auto p-6">
+                <form id="doctorForm" onSubmit={handleFormSubmit}>
+                  {activeTab === 'basic' && (
+                    <div className="space-y-6">
+                      {/* Doctor Image */}
+                      <div className="bg-muted/30 rounded-xl p-6">
+                        <h3 className="text-lg font-medium mb-4">Doctor Profile Image</h3>
                         
-                        {/* Upload progress overlay */}
-                        {uploadProgress > 0 && uploadProgress < 100 && (
-                          <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white">
-                            <div className="w-16 h-16 rounded-full border-2 border-white flex items-center justify-center">
-                              <span className="text-sm font-semibold">{uploadProgress}%</span>
+                        <div className="flex flex-col items-center justify-center">
+                          {imagePreview ? (
+                            <div className="mb-4">
+                              <div className="relative w-32 h-32 rounded-full overflow-hidden border-4 border-white shadow-lg mx-auto">
+                                <img 
+                                  src={imagePreview} 
+                                  alt="Doctor preview" 
+                                  className="w-full h-full object-cover"
+                                />
+                                {isSubmitting && uploadProgress > 0 && uploadProgress < 100 && (
+                                  <div className="absolute inset-0 bg-black/60 flex flex-col items-center justify-center text-white">
+                                    <span className="text-lg font-semibold">{uploadProgress}%</span>
+                                  </div>
+                                )}
+                              </div>
+                              <div className="flex justify-center mt-3">
+                                <Button 
+                                  type="button"
+                                  variant="outline" 
+                                  size="sm" 
+                                  onClick={() => {
+                                    if (fileInputRef.current) {
+                                      fileInputRef.current.value = '';
+                                    }
+                                    // Clear the image preview but don't reset the form
+                                    setFormValues(prev => ({ ...prev, image: '' }));
+                                  }}
+                                >
+                                  <Trash2 className="w-4 h-4 mr-1" />
+                                  Remove
+                                </Button>
+                                <Button 
+                                  type="button"
+                                  variant="outline" 
+                                  size="sm" 
+                                  className="ml-2"
+                                  onClick={() => fileInputRef.current?.click()}
+                                >
+                                  <Upload className="w-4 h-4 mr-1" />
+                                  Change
+                                </Button>
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="mb-4">
+                              <div className="w-32 h-32 rounded-full bg-muted/50 flex items-center justify-center mx-auto border-4 border-white shadow-lg">
+                                <User className="w-12 h-12 text-muted-foreground" />
+                              </div>
+                              <div className="flex justify-center mt-3">
+                                <Button 
+                                  type="button"
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => fileInputRef.current?.click()}
+                                >
+                                  <Upload className="w-4 h-4 mr-1" />
+                                  Upload Image
+                                </Button>
+                              </div>
+                            </div>
+                          )}
+                          <input
+                            type="file"
+                            ref={fileInputRef}
+                            accept="image/*"
+                            onChange={handleImageChange}
+                            className="hidden"
+                          />
+                          
+                          {uploadError && (
+                            <div className="mt-2 text-sm text-red-500 flex items-center">
+                              <AlertCircle className="w-4 h-4 mr-1" />
+                              {uploadError}
+                            </div>
+                          )}
+                          
+                          <p className="text-xs text-muted-foreground text-center mt-2">
+                            Recommended: Square image, at least 300x300px
+                          </p>
+                        </div>
+                      </div>
+                      
+                      {/* Basic Information */}
+                      <div className="bg-muted/30 rounded-xl p-6">
+                        <h3 className="text-lg font-medium mb-4">Basic Information</h3>
+                        
+                        <div className="space-y-4">
+                          {/* Doctor Name */}
+                          <div>
+                            <label className="block text-sm font-medium mb-2">
+                              Doctor Name*
+                            </label>
+                            <Input
+                              name="name"
+                              value={formValues.name || ''}
+                              onChange={handleInputChange}
+                              required
+                              placeholder="e.g. Dr. John Smith"
+                            />
+                          </div>
+                          
+                          {/* Specialty and Department */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium mb-2">
+                                Specialty*
+                              </label>
+                              <select
+                                name="specialty"
+                                value={formValues.specialty || ''}
+                                onChange={handleInputChange}
+                                required
+                                className="w-full p-2.5 rounded-xl border border-input bg-background px-4 focus:outline-none focus:ring-2 ring-primary/30 focus:border-primary"
+                              >
+                                <option value="">Select Specialty</option>
+                                {specialtyOptions.map(option => (
+                                  <option key={option} value={option}>{option}</option>
+                                ))}
+                              </select>
+                            </div>
+                            
+                            <div>
+                              <label className="block text-sm font-medium mb-2">
+                                Department
+                              </label>
+                              <select
+                                name="department"
+                                value={formValues.department || ''}
+                                onChange={handleInputChange}
+                                className="w-full p-2.5 rounded-xl border border-input bg-background px-4 focus:outline-none focus:ring-2 ring-primary/30 focus:border-primary"
+                              >
+                                <option value="">Select Department</option>
+                                {departmentOptions.map(option => (
+                                  <option key={option} value={option}>{option}</option>
+                                ))}
+                              </select>
                             </div>
                           </div>
-                        )}
-                      </div>
-                      
-                      <div className="flex-1">
-                        <label 
-                          htmlFor="imageUpload"
-                          className="flex items-center justify-center px-4 py-2 border border-dashed border-border rounded-xl cursor-pointer hover:bg-muted/50 transition-colors"
-                        >
-                          <Upload className="w-5 h-5 mr-2 text-muted-foreground" />
-                          <span className="text-muted-foreground">Upload new photo</span>
-                        </label>
-                        <input
-                          type="file"
-                          id="imageUpload"
-                          accept="image/*"
-                          onChange={handleImageChange}
-                          className="hidden"
-                        />
-                        <p className="text-xs text-muted-foreground mt-2">
-                          Recommended: Square image, at least 300x300px
-                        </p>
-                        
-                        {uploadError && (
-                          <div className="mt-2 text-sm text-red-500 flex items-center">
-                            <AlertCircle className="w-4 h-4 mr-1" />
-                            {uploadError}
+                          
+                          {/* Experience and Location */}
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                              <label className="block text-sm font-medium mb-2">
+                                Experience
+                              </label>
+                              <Input
+                                name="experience"
+                                value={formValues.experience || ''}
+                                onChange={handleInputChange}
+                                placeholder="e.g. 10+ years"
+                              />
+                            </div>
+                            
+                            <div>
+                              <label className="block text-sm font-medium mb-2">
+                                Location/Branch
+                              </label>
+                              <Input
+                                name="location"
+                                value={formValues.location || ''}
+                                onChange={handleInputChange}
+                                placeholder="e.g. Main Hospital"
+                              />
+                            </div>
                           </div>
-                        )}
+                          
+                          {/* Bio */}
+                          <div>
+                            <label className="block text-sm font-medium mb-2">
+                              Biography
+                            </label>
+                            <textarea
+                              name="bio"
+                              value={formValues.bio || ''}
+                              onChange={handleInputChange}
+                              rows={5}
+                              className="w-full rounded-xl border border-input bg-background px-4 py-2 focus:outline-none focus:ring-2 ring-primary/30 focus:border-primary"
+                              placeholder="Professional background and expertise..."
+                            />
+                          </div>
+                          
+                          {/* Rating */}
+                          <div>
+                            <label className="block text-sm font-medium mb-2">
+                              Rating
+                            </label>
+                            <Rating 
+                              value={formValues.rating || 4.5} 
+                              onChange={(newRating) => {
+                                setFormValues(prev => ({ ...prev, rating: newRating }));
+                              }} 
+                            />
+                            <input 
+                              type="hidden" 
+                              name="rating" 
+                              value={formValues.rating || 4.5} 
+                            />
+                          </div>
+                          
+                          {/* Verified Doctor */}
+                          <div className="flex items-center">
+                            <input
+                              type="checkbox"
+                              id="verified"
+                              name="verified"
+                              checked={formValues.verified || false}
+                              onChange={handleInputChange}
+                              className="w-4 h-4 text-primary border-gray-300 rounded focus:ring-primary"
+                            />
+                            <label htmlFor="verified" className="ml-2 text-sm font-medium text-foreground flex items-center">
+                              <UserCheck className="w-4 h-4 mr-1 text-success" />
+                              Verified Doctor
+                            </label>
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>
+                  )}
                   
-                  <div className="space-y-4">
-                    {/* Name */}
-                    <div>
-                      <label className="block text-sm font-medium text-foreground mb-2">
-                        Full Name*
-                      </label>
-                      <div className="relative">
-                        <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                          <User className="w-4 h-4 text-muted-foreground" />
-                        </div>
-                        <Input
-                          name="name"
-                          defaultValue={doctorData?.name || ''}
-                          required
-                          placeholder="Dr. John Doe"
-                          className="pl-10"
-                        />
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {/* Specialty */}
-                      <div>
-                        <label className="block text-sm font-medium text-foreground mb-2">
-                          Specialty*
-                        </label>
-                        <select
-                          name="specialty"
-                          defaultValue={doctorData?.specialty || ''}
-                          required
-                          className="w-full px-3 py-2 bg-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                        >
-                          <option value="" disabled>Select Specialty</option>
-                          {specialtyOptions.map(specialty => (
-                            <option key={specialty} value={specialty}>{specialty}</option>
-                          ))}
-                        </select>
-                      </div>
-                      
-                      {/* Department */}
-                      <div>
-                        <label className="block text-sm font-medium text-foreground mb-2">
-                          Department
-                        </label>
-                        <select
-                          name="department"
-                          defaultValue={doctorData?.department || ''}
-                          className="w-full px-3 py-2 bg-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-                        >
-                          <option value="">Select Department</option>
-                          {departmentOptions.map(department => (
-                            <option key={department} value={department}>{department}</option>
-                          ))}
-                        </select>
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {/* Email */}
-                      <div>
-                        <label className="block text-sm font-medium text-foreground mb-2">
-                          Email Address
-                        </label>
-                        <div className="relative">
-                          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                            <Mail className="w-4 h-4 text-muted-foreground" />
+                  {activeTab === 'details' && (
+                    <div className="space-y-6">
+                      {/* Qualifications */}
+                      <div className="bg-muted/30 rounded-xl p-6">
+                        <h3 className="text-lg font-medium mb-4">Qualifications & Expertise</h3>
+                        
+                        <div className="space-y-4">
+                          {/* Education */}
+                          <div>
+                            <label className="block text-sm font-medium mb-2 flex items-center">
+                              <Award className="w-4 h-4 mr-1 text-primary" />
+                              Education & Degrees
+                            </label>
+                            <textarea
+                              name="education"
+                              value={(formValues.education || []).join('\n')}
+                              onChange={handleInputChange}
+                              rows={4}
+                              className="w-full rounded-xl border border-input bg-background px-4 py-2 focus:outline-none focus:ring-2 ring-primary/30 focus:border-primary"
+                              placeholder="Enter each qualification on a new line&#10;e.g. M.D. Harvard Medical School&#10;e.g. Residency, Mayo Clinic"
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Enter each qualification on a new line
+                            </p>
                           </div>
-                          <Input
-                            type="email"
-                            name="email"
-                            defaultValue={doctorData?.email || ''}
-                            placeholder="john.doe@hospital.com"
-                            className="pl-10"
-                          />
-                        </div>
-                      </div>
-                      
-                      {/* Phone */}
-                      <div>
-                        <label className="block text-sm font-medium text-foreground mb-2">
-                          Phone Number
-                        </label>
-                        <div className="relative">
-                          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                            <Phone className="w-4 h-4 text-muted-foreground" />
+                          
+                          {/* Languages */}
+                          <div>
+                            <label className="block text-sm font-medium mb-2 flex items-center">
+                              <Languages className="w-4 h-4 mr-1 text-primary" />
+                              Languages Spoken
+                            </label>
+                            <textarea
+                              name="languages"
+                              value={(formValues.languages || []).join('\n')}
+                              onChange={handleInputChange}
+                              rows={3}
+                              className="w-full rounded-xl border border-input bg-background px-4 py-2 focus:outline-none focus:ring-2 ring-primary/30 focus:border-primary"
+                              placeholder="Enter each language on a new line&#10;e.g. English&#10;e.g. Spanish"
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Enter each language on a new line
+                            </p>
                           </div>
-                          <Input
-                            type="tel"
-                            name="phone"
-                            defaultValue={doctorData?.phone || ''}
-                            placeholder="+1 (123) 456-7890"
-                            className="pl-10"
-                          />
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      {/* Experience */}
-                      <div>
-                        <label className="block text-sm font-medium text-foreground mb-2">
-                          Experience
-                        </label>
-                        <Input
-                          name="experience"
-                          defaultValue={doctorData?.experience || ''}
-                          placeholder="10+ years"
-                        />
-                      </div>
-                      
-                      {/* Location */}
-                      <div>
-                        <label className="block text-sm font-medium text-foreground mb-2">
-                          Primary Location
-                        </label>
-                        <div className="relative">
-                          <div className="absolute inset-y-0 left-0 flex items-center pl-3 pointer-events-none">
-                            <MapPin className="w-4 h-4 text-muted-foreground" />
+                          
+                          {/* Awards */}
+                          <div>
+                            <label className="block text-sm font-medium mb-2 flex items-center">
+                              <Award className="w-4 h-4 mr-1 text-primary" />
+                              Awards & Recognitions
+                            </label>
+                            <textarea
+                              name="awards"
+                              value={(formValues.awards || []).join('\n')}
+                              onChange={handleInputChange}
+                              rows={3}
+                              className="w-full rounded-xl border border-input bg-background px-4 py-2 focus:outline-none focus:ring-2 ring-primary/30 focus:border-primary"
+                              placeholder="Enter each award on a new line&#10;e.g. Outstanding Medical Research Award 2022&#10;e.g. Top Doctor in Cardiology 2021"
+                            />
+                            <p className="text-xs text-muted-foreground mt-1">
+                              Enter each award on a new line
+                            </p>
                           </div>
-                          <Input
-                            name="location"
-                            defaultValue={doctorData?.location || ''}
-                            placeholder="Main Hospital"
-                            className="pl-10"
-                          />
                         </div>
                       </div>
                     </div>
-                    
-                    {/* Verification Status */}
-                    <div className="flex items-start mt-4">
-                      <div className="flex items-center h-5">
-                        <input
-                          id="verified"
-                          name="verified"
-                          type="checkbox"
-                          defaultChecked={doctorData?.verified || false}
-                          className="focus:ring-primary h-4 w-4 text-primary border-input rounded"
-                        />
-                      </div>
-                      <div className="ml-3">
-                        <label htmlFor="verified" className="text-sm font-medium text-foreground flex items-center">
-                          <CheckCircle className="w-4 h-4 mr-2 text-primary" />
-                          Verified Doctor
-                        </label>
-                        <p className="text-xs text-muted-foreground">
-                          Mark this doctor as verified to display a verification badge
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Details & Bio */}
-                <div className={activeTab === 'details' ? 'block' : 'hidden'}>
-                  <div className="space-y-6">
-                    {/* Bio */}
-                    <div>
-                      <label className="block text-sm font-medium text-foreground mb-2">
-                        Biography / Description
-                      </label>
-                      <textarea
-                        name="bio"
-                        defaultValue={doctorData?.bio || ''}
-                        rows={5}
-                        className="w-full px-3 py-2 bg-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors resize-none"
-                        placeholder="Provide a detailed description of the doctor's background, expertise, and approach to patient care..."
-                      ></textarea>
-                    </div>
-                    
-                    {/* Education - as array */}
-                    <div>
-                      <label className="block text-sm font-medium text-foreground mb-2">
-                        Education & Training
-                      </label>
-                      <p className="text-xs text-muted-foreground mb-2">
-                        Enter each qualification on a new line
-                      </p>
-                      <textarea
-                        name="education"
-                        defaultValue={doctorData?.education?.join('\n') || ''}
-                        rows={4}
-                        className="w-full px-3 py-2 bg-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors resize-none"
-                        placeholder="M.D., Harvard Medical School
-Residency in Internal Medicine, Mayo Clinic
-Fellowship in Cardiology, Johns Hopkins"
-                      ></textarea>
-                    </div>
-                    
-                    {/* Languages - as array */}
-                    <div>
-                      <label className="block text-sm font-medium text-foreground mb-2">
-                        Languages Spoken
-                      </label>
-                      <p className="text-xs text-muted-foreground mb-2">
-                        Enter each language on a new line
-                      </p>
-                      <textarea
-                        name="languages"
-                        defaultValue={doctorData?.languages?.join('\n') || ''}
-                        rows={3}
-                        className="w-full px-3 py-2 bg-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors resize-none"
-                        placeholder="English
-Spanish
-French"
-                      ></textarea>
-                    </div>
-                    
-                    {/* Rating */}
-                    <div>
-                      <label className="block text-sm font-medium text-foreground mb-2">
-                        Doctor Rating
-                      </label>
-                      <div className="flex items-center">
-                        <input
-                          type="range"
-                          name="rating"
-                          min="0"
-                          max="5"
-                          step="0.1"
-                          defaultValue={doctorData?.rating || 4.5}
-                          className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer"
-                        />
-                        <div className="flex items-center ml-4 min-w-[60px]">
-                          <Star className="w-5 h-5 text-yellow-400 fill-yellow-400 mr-1" />
-                          <span className="font-medium" id="ratingValue">
-                            {doctorData?.rating || 4.5}
-                          </span>
+                  )}
+                  
+                  {activeTab === 'contact' && (
+                    <div className="space-y-6">
+                      {/* Contact Information */}
+                      <div className="bg-muted/30 rounded-xl p-6">
+                        <h3 className="text-lg font-medium mb-4">Contact Information</h3>
+                        
+                        <div className="space-y-4">
+                          {/* Email */}
+                          <div>
+                            <label className="block text-sm font-medium mb-2 flex items-center">
+                              <Mail className="w-4 h-4 mr-1 text-primary" />
+                              Email Address
+                            </label>
+                            <Input
+                              type="email"
+                              name="email"
+                              value={formValues.email || ''}
+                              onChange={handleInputChange}
+                              placeholder="e.g. doctor@hospital.com"
+                            />
+                          </div>
+                          
+                          {/* Phone */}
+                          <div>
+                            <label className="block text-sm font-medium mb-2 flex items-center">
+                              <Phone className="w-4 h-4 mr-1 text-primary" />
+                              Phone Number
+                            </label>
+                            <Input
+                              name="phone"
+                              value={formValues.phone || ''}
+                              onChange={handleInputChange}
+                              placeholder="e.g. +1 (555) 123-4567"
+                            />
+                          </div>
+                          
+                          {/* Location */}
+                          <div>
+                            <label className="block text-sm font-medium mb-2 flex items-center">
+                              <MapPin className="w-4 h-4 mr-1 text-primary" />
+                              Primary Practice Location
+                            </label>
+                            <Input
+                              name="location"
+                              value={formValues.location || ''}
+                              onChange={handleInputChange}
+                              placeholder="e.g. Main Hospital, 2nd Floor"
+                            />
+                          </div>
+                          
+                          <div className="bg-blue-50 text-blue-800 p-4 rounded-lg mt-4">
+                            <p className="text-sm flex items-start">
+                              <Info className="w-5 h-5 mr-2 flex-shrink-0 mt-0.5" />
+                              <span>
+                                Contact information will be used for internal administrative purposes. 
+                                If displayed publicly, it will be the hospital's main contact information.
+                              </span>
+                            </p>
+                          </div>
                         </div>
                       </div>
                     </div>
-                    
-                    {/* Awards & Recognitions - as array */}
-                    <div>
-                      <label className="block text-sm font-medium text-foreground mb-2">
-                        Awards & Recognitions
-                      </label>
-                      <p className="text-xs text-muted-foreground mb-2">
-                        Enter each award on a new line
-                      </p>
-                      <textarea
-                        name="awards"
-                        defaultValue={doctorData?.awards?.join('\n') || ''}
-                        rows={3}
-                        className="w-full px-3 py-2 bg-background border border-input rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors resize-none"
-                        placeholder="Top Doctor Award, 2022
-Research Excellence Prize
-Community Service Recognition"
-                      ></textarea>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Availability Calendar */}
-                <div className={activeTab === 'availability' ? 'block' : 'hidden'}>
-                  <div>
-                    <label className="block text-sm font-medium text-foreground mb-2">
-                      Doctor Availability Schedule
-                    </label>
-                    <p className="text-sm text-muted-foreground mb-4">
-                      Set the days and time slots when this doctor is available for appointments.
-                    </p>
-                    
-                    <AvailabilityCalendar 
-                      initialAvailability={availability}
-                      onChange={handleAvailabilityChange}
-                    />
-                    
-                    {/* Hidden input to store availability data */}
-                    <input
-                      type="hidden"
-                      name="availability"
-                      id="availability-input"
-                      value={JSON.stringify(availability)}
-                    />
-                  </div>
-                </div>
-              </form>
-            </div>
-            
-            {/* Footer Actions */}
-            <div className="p-6 border-t border-border bg-background flex justify-between items-center">
-              {activeTab !== 'basic' ? (
+                  )}
+                </form>
+              </div>
+              
+              {/* Footer */}
+              <div className="p-6 border-t border-border flex items-center justify-between bg-background">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={() => {
-                    const prevTab = activeTab === 'availability' ? 'details' : 'basic';
-                    setActiveTab(prevTab);
+                    resetForm();
+                    onClose();
                   }}
-                >
-                  Previous
-                </Button>
-              ) : (
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={onClose}
                   disabled={isSubmitting}
                 >
                   Cancel
                 </Button>
-              )}
-              
-              {activeTab !== 'availability' ? (
-                <Button
-                  type="button"
-                  variant="primary"
-                  onClick={() => {
-                    const nextTab = activeTab === 'basic' ? 'details' : 'availability';
-                    setActiveTab(nextTab);
-                  }}
-                >
-                  Next
-                </Button>
-              ) : (
-                <Button
-                  type="submit"
-                  variant="primary"
-                  form="doctorForm"
-                  disabled={isSubmitting}
-                >
-                  {isSubmitting ? (
-                    <>
-                      <div className="mr-2 h-4 w-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      {doctorData ? 'Updating...' : 'Creating...'}
-                    </>
-                  ) : (
-                    doctorData ? 'Update Doctor' : 'Create Doctor'
+                <div className="flex space-x-2">
+                  {activeTab !== 'basic' && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => {
+                        const tabs = ['basic', 'details', 'contact'];
+                        const currentIndex = tabs.indexOf(activeTab);
+                        if (currentIndex > 0) {
+                          setActiveTab(tabs[currentIndex - 1]);
+                        }
+                      }}
+                    >
+                      Previous
+                    </Button>
                   )}
-                </Button>
-              )}
+                  
+                  {activeTab !== 'contact' ? (
+                    <Button
+                      type="button"
+                      variant="secondary"
+                      onClick={() => {
+                        const tabs = ['basic', 'details', 'contact'];
+                        const currentIndex = tabs.indexOf(activeTab);
+                        if (currentIndex < tabs.length - 1) {
+                          setActiveTab(tabs[currentIndex + 1]);
+                        }
+                      }}
+                    >
+                      Next
+                    </Button>
+                  ) : (
+                    <Button
+                      type="submit"
+                      form="doctorForm"
+                      variant="primary"
+                      disabled={isSubmitting}
+                    >
+                      {isSubmitting ? (
+                        <>
+                          <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                          {doctorData ? 'Updating...' : 'Creating...'}
+                        </>
+                      ) : (
+                        doctorData ? 'Update Doctor' : 'Create Doctor'
+                      )}
+                    </Button>
+                  )}
+                </div>
+              </div>
             </div>
           </motion.div>
-        </motion.div>
+        </div>
       )}
     </AnimatePresence>
   );

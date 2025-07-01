@@ -1,12 +1,12 @@
 // Cloudinary configuration for media storage
 export const cloudinaryConfig = {
   cloudName: 'dobktsnix',
-  uploadPreset: 'hospital',
+  uploadPreset: 'Real-Estate',
   apiKey: 'your-api-key', // Replace with your Cloudinary API key if needed for signed uploads
 };
 
 const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/dobktsnix/upload";
-const UPLOAD_PRESET = "hospital";
+const UPLOAD_PRESET = "Real-Estate";
 
 interface UploadResponse {
   url: string;

@@ -11,6 +11,10 @@ export interface Service {
   available24h?: boolean;
   visible: boolean;
   order: number;
+  duration?: number;
+  preparationInstructions?: string;
+  departmentId?: string;
+  doctorIds?: string[];
   createdAt: Date;
   updatedAt: Date;
 }

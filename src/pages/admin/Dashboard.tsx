@@ -9,10 +9,14 @@ import {
   query, 
   orderBy,
   onSnapshot,
-  serverTimestamp 
+  serverTimestamp,
+  arrayUnion
 } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
-import { storage, db } from '../../lib/firebase';
+import { deleteService } from '../../lib/serviceFirebase';
+// Remove Firebase storage imports since we'll use Cloudinary instead
+// import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
+// import { storage, db } from '../../lib/firebase';
+import { db } from '../../lib/firebase';
 import { useAuth } from '../../hooks/useAuth';
 import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'sonner';
@@ -23,11 +27,11 @@ import {
   // Add these new imports for contact buttons
   MessageCircle, PhoneCall, Send, Info, Clock, Grid, List, Edit2, ExternalLink, CheckCircle, Settings,
   // Add these missing icons
-  Zap, UserPlus, CheckSquare, FileText, Bell
+  Zap, UserPlus, CheckSquare, FileText, Bell, Download, User
 } from 'lucide-react';
-import { motion } from 'framer-motion';
-import { getAllServices, deleteService, reorderServices, updateService } from '../../lib/serviceFirebase';
-import { Service } from '../../types/service';
+// Import cloudinary utilities
+import { uploadImage } from '../../utils/imageUpload';
+import { getPublicIdFromUrl, deleteFromCloudinary } from '../../lib/cloudinary';
 
 // Helper function to format date values
 function formatDate(date: any): string {
@@ -43,15 +47,63 @@ function formatDate(date: any): string {
   return d.toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
+// Add this function after formatDate and before rendering functions
+function isPastAppointment(appointment: any): boolean {
+  if (!appointment.date) return false;
+  const aptDate = appointment.date?.seconds 
+    ? new Date(appointment.date.seconds * 1000) 
+    : new Date(appointment.date);
+  return aptDate < new Date() || appointment.status === 'completed' || appointment.status === 'cancelled';
+}
+
+// Helper function for formatting display dates more clearly
+function formatDisplayDate(date: any): string {
+  if (!date) return 'Not scheduled';
+  
+  // Firestore Timestamp object
+  const dateObj = date.seconds ? new Date(date.seconds * 1000) : new Date(date);
+  
+  if (isNaN(dateObj.getTime())) return 'Invalid date';
+  
+  // Check if date is today
+  const today = new Date();
+  const isToday = dateObj.toDateString() === today.toDateString();
+  
+  // Check if date is tomorrow
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const isTomorrow = dateObj.toDateString() === tomorrow.toDateString();
+  
+  // Check if date is in the past
+  const isPast = dateObj < today;
+  
+  // Format with appropriate label
+  const formattedDate = dateObj.toLocaleDateString('en-US', { 
+    month: 'short', 
+    day: 'numeric',
+    year: today.getFullYear() !== dateObj.getFullYear() ? 'numeric' : undefined 
+  });
+  
+  if (isToday) return `Today (${formattedDate})`;
+  if (isTomorrow) return `Tomorrow (${formattedDate})`;
+  if (isPast) return `${formattedDate} (Past)`;
+  
+  return formattedDate;
+}
+
 import Card from '../../components/atoms/Card';
 import Button from '../../components/atoms/Button';
 import Input from '../../components/atoms/Input';
 import Badge from '../../components/atoms/Badge';
+import { motion } from 'framer-motion';
 
 import DoctorGrid from '../../components/admin/doctors/DoctorGrid';
 import DoctorTable from '../../components/admin/doctors/DoctorTable';
 import DoctorFormDrawer from '../../components/admin/doctors/DoctorFormDrawer';
 import ServiceFormDrawer from '../../components/admin/services/ServiceFormDrawer';
+
+// Import the Service type from your types module to ensure consistency
+import type { Service } from '../../types/service';
 
 // Define enhanced interface for doctor objects
 interface Doctor {
@@ -69,8 +121,8 @@ interface Doctor {
   education?: string[];
   languages?: string[];
   awards?: string[];
-  availability?: Record<string, string[]>;
   createdAt?: any; // Firestore timestamp
+  updatedAt?: any; // Firestore timestamp
   verified?: boolean;
 }
 
@@ -392,65 +444,8 @@ const AdminDashboard = () => {
         ? `doctors/${doctorId}/${Date.now()}_${imageFile.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`
         : `doctors/new/${Date.now()}_${imageFile.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`;
       
-      const storageRef = ref(storage, fileName);
-      
-      // If editing and has previous image, try to delete it
-      if (editingDoctor?.image && editingDoctor.image.includes('firebasestorage.googleapis.com')) {
-        try {
-          const oldImageRef = ref(storage, editingDoctor.image);
-          await deleteObject(oldImageRef).catch(() => {
-            console.log('Previous image not found or already deleted');
-          });
-        } catch (error) {
-          console.error('Error deleting previous image:', error);
-          // Continue with upload even if delete fails
-        }
-      }
-      
-      // Upload the new image
-      const uploadTask = uploadBytesResumable(storageRef, imageFile);
-
-      return new Promise((resolve, reject) => {
-        uploadTask.on(
-          'state_changed',
-          (snapshot) => {
-            // Track upload progress
-            const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-            setUploadProgress(progress);
-            
-            // Update UI based on upload state
-            switch (snapshot.state) {
-              case 'paused':
-                console.log('Upload is paused');
-                break;
-              case 'running':
-                console.log('Upload is running');
-                break;
-            }
-          },
-          (error) => {
-            // Handle upload errors
-            console.error('Error uploading image:', error);
-            setIsUploading(false);
-            setUploadError('Failed to upload image. Please try again.');
-            reject(null);
-          },
-          async () => {
-            // Handle successful upload
-            try {
-              const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-              setIsUploading(false);
-              toast.success('Image uploaded successfully');
-              resolve(downloadURL);
-            } catch (error) {
-              console.error('Error getting download URL:', error);
-              setIsUploading(false);
-              setUploadError('Failed to process uploaded image.');
-              reject(null);
-            }
-          }
-        );
-      });
+      // (Firebase Storage code removed; image upload now handled by Cloudinary in handleDoctorSubmit)
+      return null;
     } catch (error) {
       console.error('Error in image upload process:', error);
       setIsUploading(false);
@@ -459,15 +454,18 @@ const AdminDashboard = () => {
     }
   };
   
-  // Enhanced doctor submission with better image handling
-  const handleDoctorSubmit = async (e: React.FormEvent) => {
+  // Enhanced doctor submission with Cloudinary image handling
+  const handleDoctorSubmit = async (e: React.FormEvent, formValues?: Partial<Doctor>) => {
     e.preventDefault();
     setIsSubmitting(true);
     setUploadError(null);
     
+    // Use formValues from the form drawer if provided, otherwise use doctorForm
+    const doctorFormData = formValues || doctorForm;
+    
     try {
       // Validate form
-      if (!doctorForm.name || !doctorForm.specialty) {
+      if (!doctorFormData.name || !doctorFormData.specialty) {
         toast.error('Name and Specialty are required');
         setIsSubmitting(false);
         return;
@@ -476,19 +474,27 @@ const AdminDashboard = () => {
       let doctorId = editingDoctor?.id;
       let imageUrl: string | null = null;
       
-      // Upload image if present
+      // Upload image if present using Cloudinary
       if (imageFile) {
-        imageUrl = await uploadDoctorImage(doctorId);
-        if (!imageUrl && uploadError) {
+        const uploadResult = await uploadImage(
+          imageFile,
+          (progress) => setUploadProgress(progress),
+          'doctors'
+        );
+        
+        if (!uploadResult.success) {
+          setUploadError(uploadResult.error || 'Failed to upload image');
           setIsSubmitting(false);
-          return; // Stop if image upload failed
+          return;
         }
+        
+        imageUrl = uploadResult.secureUrl;
       } else if (editingDoctor?.image) {
         imageUrl = editingDoctor.image;
       }
       
       const doctorData = {
-        ...doctorForm,
+        ...doctorFormData,
         image: imageUrl || '',
         updatedAt: serverTimestamp()
       };
@@ -505,13 +511,6 @@ const AdminDashboard = () => {
           createdAt: serverTimestamp()
         });
         
-        // If we have a new image and a new doctor, update the image path to include the doctor ID
-        if (imageUrl && imageFile) {
-          // This could be further enhanced to move the file to a permanent location
-          // but that would require a more complex setup with Cloud Functions
-          console.log('New doctor created with ID:', docRef.id);
-        }
-        
         toast.success('Doctor added successfully');
       }
       
@@ -526,19 +525,16 @@ const AdminDashboard = () => {
     }
   };
   
-  // Enhanced delete function with image cleanup
+  // Enhanced delete function with Cloudinary cleanup
   const confirmDeleteDoctor = async (doctor: Doctor) => {
     if (window.confirm(`Are you sure you want to delete Dr. ${doctor.name}?`)) {
       try {
-        // Delete image from storage if exists
-        if (doctor.image && doctor.image.includes('firebasestorage.googleapis.com')) {
-          try {
-            const imageRef = ref(storage, doctor.image);
-            await deleteObject(imageRef);
-            console.log('Doctor image deleted successfully');
-          } catch (imageError) {
-            console.error('Error deleting doctor image:', imageError);
-            // Continue with deletion even if image delete fails
+        // Delete image from Cloudinary if exists
+        if (doctor.image) {
+          const publicId = getPublicIdFromUrl(doctor.image);
+          if (publicId) {
+            await deleteFromCloudinary(publicId);
+            console.log('Doctor image deleted from Cloudinary');
           }
         }
         
@@ -669,15 +665,32 @@ const AdminDashboard = () => {
 
   const updateAppointmentStatus = async (appointmentId, newStatus) => {
     try {
+      const now = new Date();
       const appointmentRef = doc(db, 'appointments', appointmentId);
       await updateDoc(appointmentRef, {
         status: newStatus,
-        updatedAt: new Date()
+        updatedAt: now,
+        statusUpdatedAt: now,
+        statusHistory: arrayUnion({
+          status: newStatus,
+          timestamp: now,
+          updatedBy: currentUser?.email || 'admin'
+        })
       });
       
       // Update local state
       setAppointments(prev => prev.map(apt => 
-        apt.id === appointmentId ? { ...apt, status: newStatus } : apt
+        apt.id === appointmentId ? { 
+          ...apt, 
+          status: newStatus, 
+          updatedAt: now,
+          statusUpdatedAt: now,
+          statusHistory: [...(apt.statusHistory || []), {
+            status: newStatus,
+            timestamp: now,
+            updatedBy: currentUser?.email || 'admin'
+          }]
+        } : apt
       ));
       
       toast.success(`Appointment ${newStatus} successfully`);
@@ -803,7 +816,9 @@ const AdminDashboard = () => {
   // Handle service visibility toggle
   const toggleServiceVisibility = async (service: Service) => {
     try {
-      await updateService(service.id, {
+      // Update the service document in Firestore
+      const serviceRef = doc(db, 'services', service.id);
+      await updateDoc(serviceRef, {
         visible: !service.visible,
         updatedAt: new Date()
       });
@@ -960,7 +975,16 @@ const AdminDashboard = () => {
                 variant="ghost" 
                 size="sm" 
                 className="w-full justify-center text-primary hover:text-primary hover:bg-primary/5"
-                onClick={() => setActiveTab('appointments')}
+                onClick={() => {
+                  setActiveTab('appointments');
+                  // Default to showing upcoming appointments when clicking from dashboard
+                  setAppointmentFilter('upcoming');
+                  // Show a welcome notification
+                  toast.info('Showing your upcoming appointments', {
+                    description: 'You can filter by status or view past appointments',
+                    duration: 4000
+                  });
+                }}
               >
                 <Eye className="w-4 h-4 mr-2" />
                 View All Appointments
@@ -1590,7 +1614,7 @@ const AdminDashboard = () => {
           onDelete={confirmDeleteDoctor}
         />
         
-        {/* Add Doctor Modal - Fix: Providing all required props */}
+        {/* Add Doctor Modal */}
         <DoctorFormDrawer
           isOpen={showAddDoctorModal}
           onClose={() => {
@@ -1832,13 +1856,6 @@ const AdminDashboard = () => {
                           )}
                           {service.visible ? 'Visible' : 'Hidden'}
                         </Button>
-                      </td>
-                      <td className="p-4 text-muted-foreground">
-                        {service.available24h ? (
-                          <span className="text-success">Yes</span>
-                        ) : (
-                          <span>No</span>
-                        )}
                       </td>
                       <td className="p-4 text-right">
                         <div className="flex justify-end space-x-2">
@@ -2137,41 +2154,640 @@ MediCare+ Hospital Team
       ) : (
         <>
           {activeTab === 'overview' && renderOverview()}
-          {activeTab === 'appointments' && renderAppointments()}
+          {activeTab === 'appointments' && renderAppointments(
+            appointments,
+            appointmentFilter,
+            appointmentSearch,
+            setAppointmentFilter,
+            setAppointmentSearch,
+            isExporting,
+            setIsExporting,
+            expandedAppointmentId,
+            setExpandedAppointmentId,
+            updateAppointmentStatus,
+            deleteAppointment,
+            handleWhatsAppContact,
+            handleEmailContact,
+            handlePhoneCall
+          )}
           {activeTab === 'doctors' && renderDoctors()}
           {activeTab === 'services' && renderServices()}
-          {activeTab === 'contacts' && renderContacts(contacts, deleteContact, handleWhatsAppContact, handleEmailContact)}
+          {activeTab === 'contacts' && renderContacts(
+            contacts,
+            deleteContact,
+            handleWhatsAppContact,
+            handleEmailContact
+          )}
         </>
       )}
     </div>
   );
-};
+}
 
 // Add this function before export default AdminDashboard
-function renderAppointments() {
+function renderAppointments(
+  appointments: any[],
+  appointmentFilter: string,
+  appointmentSearch: string,
+  setAppointmentFilter: React.Dispatch<React.SetStateAction<string>>,
+  setAppointmentSearch: React.Dispatch<React.SetStateAction<string>>,
+  isExporting: boolean,
+  setIsExporting: React.Dispatch<React.SetStateAction<boolean>>,
+  expandedAppointmentId: string | null,
+  setExpandedAppointmentId: React.Dispatch<React.SetStateAction<string | null>>,
+  updateAppointmentStatus: (appointmentId: string, newStatus: string) => void,
+  deleteAppointment: (appointmentId: string) => void,
+  handleWhatsAppContact: (phone: string, name?: string, isAppointment?: boolean, appointmentData?: any) => void,
+  handleEmailContact: (email: string, name?: string, subject?: string, isAppointment?: boolean, appointmentData?: any) => void,
+  handlePhoneCall: (phone: string) => void
+) {
+  // Separate past and upcoming appointments
+  const currentDate = new Date();
+  
+  const pastAppointments = appointments.filter(apt => {
+    const aptDate = apt.date?.seconds 
+      ? new Date(apt.date.seconds * 1000) 
+      : new Date(apt.date);
+    return aptDate < currentDate || apt.status === 'completed' || apt.status === 'cancelled';
+  });
+  
+  const upcomingAppointments = appointments.filter(apt => {
+    const aptDate = apt.date?.seconds 
+      ? new Date(apt.date.seconds * 1000) 
+      : new Date(apt.date);
+    return aptDate >= currentDate && apt.status !== 'completed' && apt.status !== 'cancelled';
+  });
+
+  // Filter appointments based on selected filter and timeframe
+  const filteredAppointments = appointments.filter(apt => {
+    // Filter by status
+    if (appointmentFilter !== 'all' && appointmentFilter !== 'past' && appointmentFilter !== 'upcoming' && apt.status !== appointmentFilter) {
+      return false;
+    }
+    
+    // Filter by timeframe (past/upcoming)
+    if (appointmentFilter === 'past') {
+      const aptDate = apt.date?.seconds 
+        ? new Date(apt.date.seconds * 1000) 
+        : new Date(apt.date);
+      if (!(aptDate < currentDate || apt.status === 'completed' || apt.status === 'cancelled')) {
+        return false;
+      }
+    }
+    
+    if (appointmentFilter === 'upcoming') {
+      const aptDate = apt.date?.seconds 
+        ? new Date(apt.date.seconds * 1000) 
+        : new Date(apt.date);
+      if (!(aptDate >= currentDate && apt.status !== 'completed' && apt.status !== 'cancelled')) {
+        return false;
+      }
+    }
+    
+    // Search filter - check multiple fields
+    if (appointmentSearch.trim() !== '') {
+      const search = appointmentSearch.toLowerCase();
+      const searchableFields = [
+        apt.firstName,
+        apt.lastName,
+        apt.email,
+        apt.phone,
+        apt.doctorName,
+        apt.departmentName,
+        apt.reason
+      ];
+      
+      // Check if any field contains the search term
+      return searchableFields.some(field => 
+        field && field.toLowerCase().includes(search)
+      );
+    }
+    
+    return true;
+  });
+
+  // Get status counts for badges
+  const statusCounts = {
+    all: appointments.length,
+    upcoming: upcomingAppointments.length,
+    past: pastAppointments.length,
+    pending: appointments.filter(apt => apt.status === 'pending').length,
+    confirmed: appointments.filter(apt => apt.status === 'confirmed').length,
+    completed: appointments.filter(apt => apt.status === 'completed').length,
+    cancelled: appointments.filter(apt => apt.status === 'cancelled').length
+  };
+
+  // Function to export appointments as CSV
+  const exportAppointments = () => {
+    setIsExporting(true);
+    
+    try {
+      // Headers for CSV
+      const headers = [
+        'Patient Name',
+        'Email',
+        'Phone',
+        'Department',
+        'Doctor',
+        'Date',
+        'Time',
+        'Status',
+        'Created At'
+      ].join(',');
+      
+      // Map appointments to CSV rows
+      const rows = filteredAppointments.map(apt => {
+        const createdDate = apt.createdAt?.seconds 
+          ? new Date(apt.createdAt.seconds * 1000).toISOString() 
+          : '';
+          
+        const appointmentDate = apt.date?.seconds 
+          ? new Date(apt.date.seconds * 1000).toLocaleDateString() 
+          : apt.date;
+          
+        return [
+          `"${apt.firstName || ''} ${apt.lastName || ''}"`,
+          `"${apt.email || ''}"`,
+          `"${apt.phone || ''}"`,
+          `"${apt.departmentName || ''}"`,
+          `"${apt.doctorName || ''}"`,
+          `"${appointmentDate || ''}"`,
+          `"${apt.time || ''}"`,
+          `"${apt.status || ''}"`,
+          `"${createdDate}"`
+        ].join(',');
+      }).join('\n');
+      
+      // Create and download the CSV file
+      const csvContent = `${headers}\n${rows}`;
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', `appointments-${new Date().toISOString().split('T')[0]}.csv`);
+      link.style.visibility = 'hidden';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      
+      toast.success('Export completed successfully');
+    } catch (error) {
+      console.error('Export error:', error);
+      toast.error('Failed to export appointments');
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  // Status badge color mapping
+  const getStatusColor = (status) => {
+    switch (status?.toLowerCase()) {
+      case 'confirmed': return 'success';
+      case 'pending': return 'warning';
+      case 'completed': return 'info';
+      case 'cancelled': return 'error';
+      default: return 'primary';
+    }
+  };
+
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-foreground">Appointments Management</h2>
-      <div className="p-12 text-center bg-muted/30 rounded-xl border border-border">
-        <h3 className="text-xl font-semibold mb-3">Appointments view coming soon</h3>
-        <p className="text-muted-foreground mb-6">
-          The appointments management feature will be available here.
-        </p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-card p-6 rounded-xl border border-border shadow-sm">
+        <div>
+          <h2 className="text-2xl font-bold text-foreground flex items-center">
+            <Calendar className="w-6 h-6 mr-2 text-primary" />
+            Appointments Management
+          </h2>
+          <p className="text-muted-foreground mt-1">
+            View and manage all patient appointments, past and upcoming
+          </p>
+        </div>
+        
+        <div className="flex flex-wrap gap-2">
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => setAppointmentFilter('upcoming')}
+            className="bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200"
+          >
+            <Calendar className="w-4 h-4 mr-2" />
+            Upcoming ({statusCounts.upcoming})
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={() => setAppointmentFilter('past')}
+            className="bg-amber-50 text-amber-700 hover:bg-amber-100 border-amber-200"
+          >
+            <Clock className="w-4 h-4 mr-2" />
+            Past ({statusCounts.past})
+          </Button>
+          <Button 
+            variant="outline" 
+            size="sm"
+            onClick={exportAppointments}
+            disabled={isExporting}
+          >
+            {isExporting ? (
+              <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin mr-2"></div>
+            ) : (
+              <Download className="w-4 h-4 mr-2" />
+            )}
+            Export
+          </Button>
+        </div>
       </div>
+      
+      {/* Filters and Search */}
+      <div className="flex flex-col sm:flex-row justify-between gap-4">
+        {/* Status filter tabs */}
+        <div className="flex flex-wrap gap-2">
+          {['all', 'upcoming', 'past', 'pending', 'confirmed', 'completed', 'cancelled'].map(status => (
+            <Button
+              key={status}
+              variant={appointmentFilter === status ? 'secondary' : 'outline'}
+              size="sm"
+              onClick={() => setAppointmentFilter(status)}
+              className={`capitalize ${status === 'upcoming' ? 'bg-blue-100 text-blue-700 hover:bg-blue-200 hover:text-blue-800' : status === 'past' ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 hover:text-amber-800' : ''} ${appointmentFilter === status ? '!bg-primary !text-primary-foreground' : ''}`}
+            >
+              {status}
+              <span className="ml-2 px-1.5 py-0.5 text-xs rounded-full bg-muted">
+                {statusCounts[status]}
+              </span>
+            </Button>
+          ))}
+        </div>
+        
+        {/* Search box */}
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4" />
+          <input
+            type="text"
+            placeholder="Search appointments..."
+            value={appointmentSearch}
+            onChange={e => setAppointmentSearch(e.target.value)}
+            className="pl-9 pr-4 py-2 rounded-md border border-input bg-background focus:border-primary focus:ring-1 focus:ring-primary/20 transition-all w-full sm:w-64"
+          />
+          {appointmentSearch && (
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="absolute right-1 top-1/2 transform -translate-y-1/2 h-7 w-7 p-0" 
+              onClick={() => setAppointmentSearch('')}
+            >
+              <X className="w-4 h-4" />
+            </Button>
+          )}
+        </div>
+      </div>
+      
+      {/* Appointments Table */}
+      {filteredAppointments.length > 0 ? (
+        <div className="bg-card rounded-xl border border-border overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="text-left p-4 font-medium text-foreground">Patient</th>
+                  <th className="text-left p-4 font-medium text-foreground">Appointment</th>
+                  <th className="text-left p-4 font-medium text-foreground">Doctor</th>
+                  <th className="text-center p-4 font-medium text-foreground">Status</th>
+                  <th className="text-right p-4 font-medium text-foreground">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {filteredAppointments.map((appointment) => (
+                  <React.Fragment key={appointment.id}>
+                    <tr 
+                      className={`border-t border-border hover:bg-muted/10 ${
+                        expandedAppointmentId === appointment.id ? 'bg-muted/5' : ''
+                      } ${isPastAppointment(appointment) ? 'bg-muted/20' : ''}`}
+                      onClick={() => setExpandedAppointmentId(
+                        expandedAppointmentId === appointment.id ? null : appointment.id
+                      )}
+                    >
+                      <td className="p-4">
+                        <div className="flex items-center">
+                          <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mr-3">
+                            <User className="w-5 h-5 text-primary" />
+                          </div>
+                          <div>
+                            <div className="font-medium text-foreground">
+                              {appointment.firstName} {appointment.lastName}
+                            </div>
+                            <div className="text-sm text-muted-foreground">
+                              {appointment.email}
+                            </div>
+                            {appointment.createdAt && (
+                              <div className="text-xs text-muted-foreground mt-1">
+                                Booked on: {formatDate(appointment.createdAt)}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <div className="font-medium text-foreground flex items-center">
+                          <Calendar className={`w-4 h-4 mr-2 ${isPastAppointment(appointment) ? 'text-amber-500' : 'text-primary'}`} />
+                          <span className="flex items-center">
+                            {formatDisplayDate(appointment.date)}
+                            {isPastAppointment(appointment) ? (
+                              <span className="ml-2 text-xs px-1.5 py-0.5 bg-amber-100 text-amber-800 rounded-full">Past</span>
+                            ) : (
+                              <span className="ml-2 text-xs px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded-full">Upcoming</span>
+                            )}
+                          </span>
+                        </div>
+                        <div className="text-sm text-muted-foreground flex items-center">
+                          <Clock className="w-4 h-4 mr-2" />
+                          {appointment.time || 'N/A'}
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <div className="font-medium text-foreground">
+                          {appointment.doctorName || 'Not assigned'}
+                        </div>
+                        <div className="text-sm text-muted-foreground">
+                          {appointment.departmentName || 'N/A'}
+                        </div>
+                      </td>
+                      <td className="p-4 text-center">
+                        <div className="space-y-1">
+                          <Badge 
+                            variant={getStatusColor(appointment.status)} 
+                            size="sm"
+                            className="capitalize"
+                          >
+                            {appointment.status || 'pending'}
+                          </Badge>
+                          
+                          {/* Show timestamp of when status was last updated */}
+                          {appointment.statusUpdatedAt && (
+                            <div className="text-xs text-muted-foreground">
+                              Updated: {formatDate(appointment.statusUpdatedAt)}
+                            </div>
+                          )}
+                        </div>
+                      </td>
+                      <td className="p-4 text-right">
+                        <div className="flex justify-end space-x-2">
+                          {/* Status update buttons conditionally shown based on current status */}
+                          {appointment.status === 'pending' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-success hover:text-success hover:bg-success/10"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                updateAppointmentStatus(appointment.id, 'confirmed');
+                              }}
+                            >
+                              <CheckCircle className="w-4 h-4" />
+                            </Button>
+                          )}
+                          
+                          {(appointment.status === 'pending' || appointment.status === 'confirmed') && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-blue-500 hover:text-blue-600 hover:bg-blue-50"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                updateAppointmentStatus(appointment.id, 'completed');
+                              }}
+                            >
+                              <Check className="w-4 h-4" />
+                            </Button>
+                          )}
+                          
+                          {appointment.status !== 'cancelled' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                updateAppointmentStatus(appointment.id, 'cancelled');
+                              }}
+                            >
+                              <X className="w-4 h-4" />
+                            </Button>
+                          )}
+                          
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (window.confirm('Are you sure you want to delete this appointment?')) {
+                                deleteAppointment(appointment.id);
+                              }
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                    
+                    {/* Expanded details row */}
+                    {expandedAppointmentId === appointment.id && (
+                      <tr className="bg-muted/5 border-t border-border">
+                        <td colSpan={5} className="p-4">
+                          <div className="grid md:grid-cols-3 gap-6">
+                            <div>
+                              <h4 className="text-sm font-medium text-foreground mb-2 flex items-center">
+                                <User className="w-4 h-4 mr-2" />
+                                Patient Details
+                              </h4>
+                              <div className="space-y-2 text-sm">
+                                <div className="flex">
+                                  <span className="text-muted-foreground w-24">Full Name:</span>
+                                  <span className="font-medium">{appointment.firstName} {appointment.lastName}</span>
+                                </div>
+                                <div className="flex">
+                                  <span className="text-muted-foreground w-24">Email:</span>
+                                  <a href={`mailto:${appointment.email}`} className="text-primary hover:underline">
+                                    {appointment.email}
+                                  </a>
+                                </div>
+                                <div className="flex">
+                                  <span className="text-muted-foreground w-24">Phone:</span>
+                                  <a href={`tel:${appointment.phone}`} className="text-primary hover:underline">
+                                    {appointment.phone}
+                                  </a>
+                                </div>
+                                {appointment.createdAt && (
+                                  <div className="flex">
+                                    <span className="text-muted-foreground w-24">Created:</span>
+                                    <span>
+                                      {appointment.createdAt.seconds
+                                        ? new Date(appointment.createdAt.seconds * 1000).toLocaleString()
+                                        : new Date(appointment.createdAt).toLocaleString()}
+                                    </span>
+                                  </div>
+                                )}
+                              </div>
+                            </div>
+                            
+                            <div>
+                              <h4 className="text-sm font-medium text-foreground mb-2 flex items-center">
+                                <Calendar className="w-4 h-4 mr-2" />
+                                Appointment Details
+                              </h4>
+                              <div className="space-y-2 text-sm">
+                                <div className="flex">
+                                  <span className="text-muted-foreground w-24">Doctor:</span>
+                                  <span className="font-medium">{appointment.doctorName || 'Not assigned'}</span>
+                                </div>
+                                <div className="flex">
+                                  <span className="text-muted-foreground w-24">Department:</span>
+                                  <span>{appointment.departmentName || 'N/A'}</span>
+                                </div>
+                                <div className="flex">
+                                  <span className="text-muted-foreground w-24">Date:</span>
+                                  <span>{formatDisplayDate(appointment.date)}</span>
+                                </div>
+                                <div className="flex">
+                                  <span className="text-muted-foreground w-24">Time:</span>
+                                  <span>{appointment.time || 'N/A'}</span>
+                                </div>
+                              </div>
+                            </div>
+                            
+                            <div>
+                              <h4 className="text-sm font-medium text-foreground mb-2 flex items-center">
+                                <FileText className="w-4 h-4 mr-2" />
+                                Additional Info
+                              </h4>
+                              <div className="space-y-2 text-sm">
+                                {appointment.reason ? (
+                                  <div>
+                                    <span className="text-muted-foreground block mb-1">Reason:</span>
+                                    <p className="bg-muted/30 p-2 rounded text-muted-foreground">
+                                      {appointment.reason}
+                                    </p>
+                                  </div>
+                                ) : (
+                                  <p className="text-muted-foreground">No additional information provided.</p>
+                                )}
+                              </div>
+                              
+                              {/* Appointment Status History */}
+                              {appointment.statusHistory && appointment.statusHistory.length > 0 && (
+                                <div className="mt-4 border-t border-border pt-3">
+                                  <h4 className="text-sm font-medium text-foreground mb-2 flex items-center">
+                                    <Clock className="w-4 h-4 mr-2" />
+                                    Appointment History
+                                  </h4>
+                                  <div className="space-y-2">
+                                    {appointment.statusHistory.map((history, idx) => (
+                                      <div key={idx} className="text-xs flex items-center">
+                                        <div className={`w-2 h-2 rounded-full mr-2 ${
+                                          history.status === 'confirmed' ? 'bg-green-500' :
+                                          history.status === 'completed' ? 'bg-blue-500' :
+                                          history.status === 'cancelled' ? 'bg-red-500' : 'bg-amber-500'
+                                        }`}></div>
+                                        <span className="capitalize font-medium">{history.status}</span>
+                                        <span className="mx-1">-</span>
+                                        <span className="text-muted-foreground">
+                                          {history.timestamp?.seconds 
+                                            ? new Date(history.timestamp.seconds * 1000).toLocaleString()
+                                            : new Date(history.timestamp).toLocaleString()}
+                                        </span>
+                                        {history.updatedBy && (
+                                          <span className="ml-1 text-muted-foreground">
+                                            by {history.updatedBy}
+                                          </span>
+                                        )}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                              
+                              {/* Contact Actions */}
+                              <div className="mt-4 flex space-x-2">
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => handleWhatsAppContact(
+                                    appointment.phone, 
+                                    `${appointment.firstName} ${appointment.lastName}`,
+                                    true,
+                                    appointment
+                                  )}
+                                >
+                                  <MessageCircle className="w-4 h-4 mr-1" />
+                                  WhatsApp
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => handleEmailContact(
+                                    appointment.email,
+                                    `${appointment.firstName} ${appointment.lastName}`,
+                                    "Appointment Information",
+                                    true,
+                                    appointment
+                                  )}
+                                >
+                                  <Mail className="w-4 h-4 mr-1" />
+                                  Email
+                                </Button>
+                                <Button 
+                                  variant="outline" 
+                                  size="sm"
+                                  onClick={() => handlePhoneCall(appointment.phone)}
+                                >
+                                  <Phone className="w-4 h-4 mr-1" />
+                                  Call
+                                </Button>
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                    )}
+                  </React.Fragment>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : (
+        <div className="p-12 text-center bg-muted/30 rounded-xl border border-border">
+          <div className="w-16 h-16 mx-auto flex items-center justify-center rounded-full bg-muted">
+            <Calendar className="w-8 h-8 text-muted-foreground" />
+          </div>
+          <h3 className="text-xl font-semibold mt-4 mb-2">No appointments found</h3>
+          <p className="text-muted-foreground mb-6">
+            {appointmentSearch ? 'No appointments match your search criteria.' : 'There are no appointments yet.'}
+          </p>
+          {appointmentSearch && (
+            <Button variant="outline" onClick={() => setAppointmentSearch('')}>
+              Clear Search
+            </Button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
-// Render contacts tab content
+// Add this function before export default AdminDashboard
 function renderContacts(
   contacts: any[],
-  deleteContact: (id: string) => void,
+  deleteContact: (contactId: string) => void,
   handleWhatsAppContact: (phone: string, name?: string) => void,
-  handleEmailContact?: (email: string, name?: string, subject?: string) => void
+  handleEmailContact: (email: string, name?: string, subject?: string) => void
 ) {
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-foreground">Contacts Management</h2>
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold text-foreground">Contact Inquiries</h2>
+      </div>
       {contacts.length === 0 ? (
         <div className="p-12 text-center bg-muted/30 rounded-xl border border-border">
           <h3 className="text-xl font-semibold mb-3">No contacts found</h3>
@@ -2180,7 +2796,7 @@ function renderContacts(
           </p>
         </div>
       ) : (
-        <Card premium className="overflow-hidden">
+        <div className="bg-card rounded-xl border border-border overflow-hidden">
           <div className="overflow-x-auto">
             <table className="w-full">
               <thead className="bg-muted/50">
@@ -2189,16 +2805,13 @@ function renderContacts(
                   <th className="text-left p-4 font-medium text-foreground">Email</th>
                   <th className="text-left p-4 font-medium text-foreground">Phone</th>
                   <th className="text-left p-4 font-medium text-foreground">Message</th>
-                  <th className="text-left p-4 font-medium text-foreground">Date</th>
                   <th className="text-right p-4 font-medium text-foreground">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {contacts.map((contact) => (
                   <tr key={contact.id} className="border-t border-border hover:bg-muted/10">
-                    <td className="p-4">
-                      <div className="font-medium text-foreground">{contact.name}</div>
-                    </td>
+                    <td className="p-4">{contact.name}</td>
                     <td className="p-4">
                       <a href={`mailto:${contact.email}`} className="text-primary hover:underline">
                         {contact.email}
@@ -2209,26 +2822,12 @@ function renderContacts(
                         {contact.phone}
                       </a>
                     </td>
-                    <td className="p-4">
-                      <span className="text-muted-foreground text-sm line-clamp-2">{contact.message}</span>
-                    </td>
-                    <td className="p-4">
-                      <span className="text-muted-foreground text-xs">{formatDate(contact.createdAt)}</span>
-                    </td>
+                    <td className="p-4">{contact.message}</td>
                     <td className="p-4 text-right">
                       <div className="flex justify-end space-x-2">
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="text-red-500 hover:text-red-600 hover:bg-red-50"
-                          onClick={() => deleteContact(contact.id)}
-                        >
-                          <Trash2 className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="text-green-500 hover:text-green-600 hover:bg-green-50"
                           onClick={() => handleWhatsAppContact(contact.phone, contact.name)}
                         >
                           <MessageCircle className="w-4 h-4" />
@@ -2236,10 +2835,21 @@ function renderContacts(
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="text-blue-500 hover:text-blue-600 hover:bg-blue-50"
-                          onClick={() => handleEmailContact && handleEmailContact(contact.email, contact.name, contact.subject)}
+                          onClick={() => handleEmailContact(contact.email, contact.name, contact.subject)}
                         >
                           <Mail className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                          onClick={() => {
+                            if (window.confirm('Are you sure you want to delete this contact?')) {
+                              deleteContact(contact.id);
+                            }
+                          }}
+                        >
+                          <Trash2 className="w-4 h-4" />
                         </Button>
                       </div>
                     </td>
@@ -2248,7 +2858,7 @@ function renderContacts(
               </tbody>
             </table>
           </div>
-        </Card>
+        </div>
       )}
     </div>
   );

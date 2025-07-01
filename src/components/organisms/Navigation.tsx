@@ -3,6 +3,7 @@ import { Link, useLocation } from 'react-router-dom';
 import Button from '../atoms/Button';
 import { Menu, Phone, Calendar, User, Home, Stethoscope, UserCheck, MessageCircle } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
+import { scrollToTop } from '../../utils/scrollHelpers';
 
 const Navigation: React.FC = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -27,6 +28,15 @@ const Navigation: React.FC = () => {
     { label: 'Contact', href: '/contact', icon: MessageCircle },
   ];
 
+  // Enhanced navigation click handler that scrolls to top
+  const handleNavLinkClick = () => {
+    scrollToTop();
+    // Close mobile menu if open
+    if (isMobileMenuOpen) {
+      setIsMobileMenuOpen(false);
+    }
+  };
+
   return (
     <nav className={`fixed top-0 left-0 right-0 z-50 transition-all duration-300 ${
       isScrolled
@@ -36,7 +46,7 @@ const Navigation: React.FC = () => {
       <div className="container-hospital px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16 lg:h-20">
           {/* Logo */}
-          <Link to="/" className="flex items-center space-x-3">
+          <Link to="/" className="flex items-center space-x-3" onClick={handleNavLinkClick}>
             <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
               <div className="w-6 h-6 rounded bg-white"></div>
             </div>
@@ -63,6 +73,7 @@ const Navigation: React.FC = () => {
                       ? 'text-foreground hover:text-primary' 
                       : 'text-white hover:text-accent'
                 }`}
+                onClick={handleNavLinkClick}
               >
                 {item.label}
               </Link>
@@ -74,7 +85,7 @@ const Navigation: React.FC = () => {
             {currentUser ? (
               <>
                 {userRole === 'patient' && (
-                  <Link to="/patient-portal">
+                  <Link to="/patient-portal" onClick={handleNavLinkClick}>
                     <Button
                       variant={isScrolled ? 'outline' : 'ghost'}
                       size="md"
@@ -88,7 +99,10 @@ const Navigation: React.FC = () => {
                 <Button
                   variant={isScrolled ? 'primary' : 'accent'}
                   size="md"
-                  onClick={logout}
+                  onClick={() => {
+                    scrollToTop();
+                    logout();
+                  }}
                 >
                   Logout
                 </Button>
@@ -103,7 +117,7 @@ const Navigation: React.FC = () => {
                   <Phone className="w-4 h-4 mr-2" />
                   Call Now
                 </Button>
-                <Link to="/appointment-booking">
+                <Link to="/appointment-booking" onClick={handleNavLinkClick}>
                   <Button
                     variant={isScrolled ? 'primary' : 'accent'}
                     size="md"
@@ -142,7 +156,7 @@ const Navigation: React.FC = () => {
                       ? 'text-primary'
                       : 'text-foreground hover:text-primary'
                   }`}
-                  onClick={() => setIsMobileMenuOpen(false)}
+                  onClick={handleNavLinkClick}
                 >
                   <item.icon className="w-5 h-5" />
                   <span>{item.label}</span>

@@ -10,15 +10,15 @@ interface Department {
   name: string;
   description: string;
   shortDescription: string;
-  icon: string;
-  image: string;
-  category: string;
-  specializations: string[];
-  availability: {
+  icon?: string;
+  image?: string;
+  category?: string;
+  specializations?: string[];
+  availability?: {
     days: string[];
     hours: string;
   };
-  features: string[];
+  features?: string[];
   available24h?: boolean;
 }
 

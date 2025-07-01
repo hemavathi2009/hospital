@@ -100,16 +100,19 @@ const PatientPortal = () => {
     <div className="space-y-8">
       {/* Upcoming Appointments */}
       <div>
-        <h3 className="text-xl font-semibold text-foreground mb-6">Upcoming Appointments</h3>
+        <h3 className="text-xl font-semibold text-foreground mb-6 flex items-center">
+          <Calendar className="w-5 h-5 mr-2 text-primary" />
+          Upcoming Appointments
+        </h3>
         <div className="space-y-4">
           {upcomingAppointments.length > 0 ? (
             upcomingAppointments.map((appointment) => (
-              <Card key={appointment.id} premium className="p-6">
+              <Card key={appointment.id} premium className="p-6 bg-primary/5">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
                     <div className="flex items-center mb-2">
                       <h4 className="text-lg font-semibold text-foreground mr-3">
-                        {appointment.doctor}
+                        Dr. {appointment.doctor}
                       </h4>
                       <Badge variant={getStatusColor(appointment.status)} size="sm">
                         {appointment.status || 'pending'}
@@ -118,8 +121,9 @@ const PatientPortal = () => {
                     <p className="text-muted-foreground mb-2">{appointment.department}</p>
                     <div className="flex items-center space-x-4 text-sm text-muted-foreground">
                       <div className="flex items-center">
-                        <Calendar className="w-4 h-4 mr-1" />
+                        <Calendar className="w-4 h-4 mr-1 text-primary" />
                         {formatDate(appointment.date)}
+                        <span className="ml-2 text-xs px-1.5 py-0.5 bg-blue-100 text-blue-800 rounded-full">Upcoming</span>
                       </div>
                       <div className="flex items-center">
                         <Clock className="w-4 h-4 mr-1" />
@@ -138,7 +142,17 @@ const PatientPortal = () => {
             ))
           ) : (
             <Card premium className="p-8 text-center">
-              <p className="text-muted-foreground">No upcoming appointments</p>
+              <div className="flex flex-col items-center">
+                <Calendar className="w-16 h-16 text-muted-foreground mb-3" />
+                <p className="text-lg font-medium text-foreground mb-1">No upcoming appointments</p>
+                <p className="text-muted-foreground mb-4">You don't have any scheduled appointments</p>
+                <Button 
+                  onClick={() => navigate('/appointment-booking')}
+                  className="mt-2"
+                >
+                  Book an Appointment
+                </Button>
+              </div>
             </Card>
           )}
         </div>
@@ -146,27 +160,61 @@ const PatientPortal = () => {
 
       {/* Past Appointments */}
       <div>
-        <h3 className="text-xl font-semibold text-foreground mb-6">Past Appointments</h3>
+        <h3 className="text-xl font-semibold text-foreground mb-6 flex items-center">
+          <Clock className="w-5 h-5 mr-2 text-amber-500" />
+          Past Appointments & History
+        </h3>
         <div className="space-y-4">
           {pastAppointments.length > 0 ? (
             pastAppointments.map((appointment) => (
-              <Card key={appointment.id} premium className="p-6">
+              <Card key={appointment.id} premium className="p-6 bg-muted/20">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <h4 className="text-lg font-semibold text-foreground mb-2">
-                      {appointment.doctor}
-                    </h4>
+                    <div className="flex items-center mb-2">
+                      <h4 className="text-lg font-semibold text-foreground mr-3">
+                        {appointment.doctor}
+                      </h4>
+                      <Badge variant={getStatusColor(appointment.status)} size="sm">
+                        {appointment.status || 'completed'}
+                      </Badge>
+                    </div>
                     <p className="text-muted-foreground mb-2">{appointment.department}</p>
                     <div className="flex items-center space-x-4 text-sm text-muted-foreground mb-3">
                       <div className="flex items-center">
-                        <Calendar className="w-4 h-4 mr-1" />
+                        <Calendar className="w-4 h-4 mr-1 text-amber-500" />
                         {formatDate(appointment.date)}
+                        <span className="ml-2 text-xs px-1.5 py-0.5 bg-amber-100 text-amber-800 rounded-full">Past</span>
                       </div>
                       <div className="flex items-center">
                         <Clock className="w-4 h-4 mr-1" />
                         {appointment.time}
                       </div>
                     </div>
+                    
+                    {/* Status history if available */}
+                    {appointment.statusHistory && appointment.statusHistory.length > 0 && (
+                      <div className="mb-3 p-2 bg-background rounded-lg">
+                        <p className="text-xs font-medium mb-1">Appointment Status Updates:</p>
+                        <div className="space-y-1">
+                          {appointment.statusHistory.map((history, idx) => (
+                            <div key={idx} className="text-xs flex items-center">
+                              <div className={`w-2 h-2 rounded-full mr-1 ${
+                                history.status === 'confirmed' ? 'bg-green-500' :
+                                history.status === 'completed' ? 'bg-blue-500' :
+                                history.status === 'cancelled' ? 'bg-red-500' : 'bg-amber-500'
+                              }`}></div>
+                              <span className="capitalize">{history.status}</span>
+                              <span className="mx-1 text-muted-foreground">-</span>
+                              <span className="text-muted-foreground">
+                                {history.timestamp?.seconds 
+                                  ? new Date(history.timestamp.seconds * 1000).toLocaleString()
+                                  : new Date(history.timestamp).toLocaleString()}
+                              </span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                     {appointment.reason && (
                       <div className="bg-muted/50 p-3 rounded-xl">
                         <p className="text-sm font-medium text-foreground mb-1">Reason:</p>
@@ -182,7 +230,11 @@ const PatientPortal = () => {
             ))
           ) : (
             <Card premium className="p-8 text-center">
-              <p className="text-muted-foreground">No past appointments</p>
+              <div className="flex flex-col items-center">
+                <Clock className="w-16 h-16 text-muted-foreground mb-3" />
+                <p className="text-lg font-medium text-foreground mb-1">No appointment history</p>
+                <p className="text-muted-foreground">Your past appointments will appear here</p>
+              </div>
             </Card>
           )}
         </div>

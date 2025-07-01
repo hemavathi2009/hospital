@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
@@ -7,8 +6,9 @@ import { auth, db } from '../../lib/firebase';
 import Card from '../../components/atoms/Card';
 import Button from '../../components/atoms/Button';
 import Input from '../../components/atoms/Input';
-import { Lock, Mail, Eye, EyeOff } from 'lucide-react';
+import { Lock, Mail, Eye, EyeOff, CloudCog } from 'lucide-react';
 import { toast } from 'sonner';
+import { cloudinaryConfig } from '../../lib/cloudinary';
 
 const AdminLogin = () => {
   const [email, setEmail] = useState('');
@@ -85,6 +85,10 @@ const AdminLogin = () => {
           </div>
           <h1 className="text-2xl font-bold text-foreground mb-2">Admin Login</h1>
           <p className="text-muted-foreground">Access your admin dashboard</p>
+          <div className="mt-2 text-xs flex items-center justify-center text-muted-foreground">
+            <CloudCog className="w-3 h-3 mr-1" /> 
+            Images powered by Cloudinary: {cloudinaryConfig.cloudName}
+          </div>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
