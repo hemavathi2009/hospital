@@ -14,20 +14,44 @@ import {
 import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import { storage, db } from '../../lib/firebase';
 import { useAuth } from '../../hooks/useAuth';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'sonner';
 import { 
   Search, Filter, Star, Calendar, Users, Stethoscope, Building, Activity, 
   UserCheck, Plus, Edit, Trash2, MoreHorizontal, Upload, X, Check,
-  UserCircle, MapPin, GraduationCap, BookOpen, Languages, Award, Mail, Phone, Eye,
+  UserCircle, MapPin, GraduationCap, BookOpen, Languages, Award, Mail, Phone, Eye, EyeOff,
   // Add these new imports for contact buttons
-  MessageCircle, PhoneCall, Send
+  MessageCircle, PhoneCall, Send, Info, Clock, Grid, List, Edit2, ExternalLink, CheckCircle, Settings,
+  // Add these missing icons
+  Zap, UserPlus, CheckSquare, FileText, Bell
 } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { getAllServices, deleteService, reorderServices, updateService } from '../../lib/serviceFirebase';
+import { Service } from '../../types/service';
+
+// Helper function to format date values
+function formatDate(date: any): string {
+  if (!date) return '';
+  // Firestore Timestamp object
+  if (typeof date === 'object' && date.seconds) {
+    const d = new Date(date.seconds * 1000);
+    return d.toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' });
+  }
+  // ISO string or JS Date
+  const d = new Date(date);
+  if (isNaN(d.getTime())) return '';
+  return d.toLocaleDateString('en-IN', { year: 'numeric', month: 'short', day: 'numeric' });
+}
 
 import Card from '../../components/atoms/Card';
 import Button from '../../components/atoms/Button';
 import Input from '../../components/atoms/Input';
 import Badge from '../../components/atoms/Badge';
+
+import DoctorGrid from '../../components/admin/doctors/DoctorGrid';
+import DoctorTable from '../../components/admin/doctors/DoctorTable';
+import DoctorFormDrawer from '../../components/admin/doctors/DoctorFormDrawer';
+import ServiceFormDrawer from '../../components/admin/services/ServiceFormDrawer';
 
 // Define enhanced interface for doctor objects
 interface Doctor {
@@ -112,6 +136,7 @@ const AdminDashboard = () => {
   const [contacts, setContacts] = useState([]);
   const [doctors, setDoctors] = useState([]);
   const [facilities, setFacilities] = useState([]);
+  const [services, setServices] = useState<Service[]>([]);
   const [loading, setLoading] = useState(true);
   const [showAddDoctorModal, setShowAddDoctorModal] = useState(false);
   const [showAddFacilityModal, setShowAddFacilityModal] = useState(false);
@@ -119,7 +144,19 @@ const AdminDashboard = () => {
   const [editingFacility, setEditingFacility] = useState(null);
   const [showAppointmentModal, setShowAppointmentModal] = useState(false);
   const [viewingAppointment, setViewingAppointment] = useState(null);
+  const [viewingContact, setViewingContact] = useState<any>(null);
+  const [showContactModal, setShowContactModal] = useState(false);
   
+  // View mode state for services
+  const [viewMode, setViewMode] = useState(() => {
+    return localStorage.getItem('servicesViewMode') || 'grid';
+  });
+  const [serviceToEdit, setServiceToEdit] = useState<Service | null>(null);
+  const [isServiceFormOpen, setIsServiceFormOpen] = useState(false);
+  const [isServiceDeleteDialogOpen, setIsServiceDeleteDialogOpen] = useState(false);
+  const [serviceToDelete, setServiceToDelete] = useState<Service | null>(null);
+  const [reorderingServices, setReorderingServices] = useState(false);
+
   // Enhanced Doctor form state
   const [doctorForm, setDoctorForm] = useState<Partial<Doctor>>({
     name: '',
@@ -165,6 +202,12 @@ const AdminDashboard = () => {
   const [filterDepartment, setFilterDepartment] = useState('');
   // Submission state for doctor form
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Appointment filter state
+  const [appointmentFilter, setAppointmentFilter] = useState('all');
+  const [appointmentSearch, setAppointmentSearch] = useState('');
+  const [expandedAppointmentId, setExpandedAppointmentId] = useState<string | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
 
   // Reset doctor form state
   const resetDoctorForm = () => {
@@ -509,9 +552,6 @@ const AdminDashboard = () => {
     }
   };
 
-  const [viewingContact, setViewingContact] = useState(null);
-  const [showContactModal, setShowContactModal] = useState(false);
-
   useEffect(() => {
     // Redirect if not logged in
     if (!currentUser) {
@@ -600,6 +640,21 @@ const AdminDashboard = () => {
       toast.error('Failed to load facilities');
     });
 
+    // Real-time listener for services
+    const servicesRef = collection(db, 'services');
+    const servicesQuery = query(servicesRef, orderBy('order', 'asc'));
+    const unsubscribeServices = onSnapshot(servicesQuery, (snapshot) => {
+      const servicesData = snapshot.docs.map(doc => ({
+        id: doc.id,
+        ...doc.data()
+      })) as Service[];
+      setServices(servicesData);
+      console.log('Real-time services update:', servicesData.length);
+    }, (error) => {
+      console.error('Error listening to services:', error);
+      toast.error('Failed to load services');
+    });
+
     setLoading(false);
 
     // Cleanup function to unsubscribe from listeners
@@ -608,6 +663,7 @@ const AdminDashboard = () => {
       unsubscribeContacts();
       unsubscribeDoctors();
       unsubscribeFacilities();
+      unsubscribeServices();
     };
   };
 
@@ -733,739 +789,1168 @@ const AdminDashboard = () => {
     }
   };
 
-  const getStatusColor = (status) => {
-    switch (status?.toLowerCase()) {
-      case 'confirmed': return 'success';
-      case 'pending': return 'warning';
-      case 'completed': return 'info';
-      case 'cancelled': return 'error';
-      default: return 'primary';
-    }
-  };
-
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
+  // Handle service deletion
+  const deleteServiceItem = async (serviceId: string) => {
     try {
-      // Handle Firestore Timestamp
-      if (dateString?.toDate) {
-        return dateString.toDate().toLocaleDateString();
-      }
-      return new Date(dateString).toLocaleDateString();
-    } catch {
-      return dateString;
+      await deleteService(serviceId);
+      toast.success('Service deleted successfully');
+    } catch (error) {
+      console.error('Error deleting service:', error);
+      toast.error('Failed to delete service');
     }
   };
 
-  const stats = [
-    { 
-      icon: Users, 
-      label: 'Total Appointments', 
-      value: appointments.length.toString(), 
-      change: '+' + Math.floor(appointments.length * 0.1) + '%', 
-      color: 'text-blue-600' 
-    },
-    { 
-      icon: Calendar, 
-      label: 'Pending Appointments', 
-      value: appointments.filter(apt => apt.status === 'pending').length.toString(), 
-      change: '+' + Math.floor(appointments.filter(apt => apt.status === 'pending').length * 0.05) + '%', 
-      color: 'text-green-600' 
-    },
-    { 
-      icon: Stethoscope, 
-      label: 'Total Doctors', 
-      value: doctors.length.toString(), 
-      change: '+' + Math.floor(doctors.length * 0.08) + '%', 
-      color: 'text-purple-600' 
-    },
-    { 
-      icon: Activity, 
-      label: 'Contact Messages', 
-      value: contacts.length.toString(), 
-      change: '+' + Math.floor(contacts.length * 0.15) + '%', 
-      color: 'text-red-600' 
-    },
-    { 
-      icon: Building, 
-      label: 'Medical Facilities', 
-      value: facilities.length.toString(), 
-      change: '+' + Math.floor(facilities.length * 0.12) + '%', 
-      color: 'text-orange-600' 
-    },
-  ];
+  // Handle service visibility toggle
+  const toggleServiceVisibility = async (service: Service) => {
+    try {
+      await updateService(service.id, {
+        visible: !service.visible,
+        updatedAt: new Date()
+      });
+      toast.success(`Service ${service.visible ? 'hidden' : 'shown'} successfully`);
+    } catch (error) {
+      console.error('Error updating service visibility:', error);
+      toast.error('Failed to update service');
+    }
+  };
 
-  const renderOverview = () => (
-    <div className="space-y-8">
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        {stats.map((stat, index) => (
-          <Card key={index} premium className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground mb-1">{stat.label}</p>
-                <p className="text-2xl font-bold text-foreground">{stat.value}</p>
-                <p className={`text-sm ${stat.change.startsWith('+') ? 'text-success' : 'text-error'}`}>
-                  {stat.change} from last month
-                </p>
-              </div>
-              <div className={`w-12 h-12 rounded-xl bg-muted flex items-center justify-center ${stat.color}`}>
-                <stat.icon className="w-6 h-6" />
-              </div>
-            </div>
-          </Card>
-        ))}
-      </div>
+  // Add the renderOverview function with enhanced dashboard content
+  const renderOverview = () => {
+    // Calculate statistics
+    const todayAppointments = appointments.filter(apt => {
+      if (!apt.date) return false;
+      const aptDate = apt.date.seconds 
+        ? new Date(apt.date.seconds * 1000).toISOString().split('T')[0]
+        : new Date(apt.date).toISOString().split('T')[0];
+      return aptDate === new Date().toISOString().split('T')[0];
+    });
+    
+    // Appointment status counts
+    const appointmentStats = {
+      total: appointments.length,
+      confirmed: appointments.filter(apt => apt.status === 'confirmed').length,
+      pending: appointments.filter(apt => apt.status === 'pending').length,
+      cancelled: appointments.filter(apt => apt.status === 'cancelled').length,
+      completed: appointments.filter(apt => apt.status === 'completed').length,
+    };
 
-      {/* Recent Activity */}
-      <div className="grid lg:grid-cols-2 gap-8">
-        <Card premium className="p-6">
-          <h3 className="text-xl font-semibold text-foreground mb-6">Recent Appointments</h3>
-          <div className="space-y-4">
-            {appointments.slice(0, 5).map((appointment) => (
-              <div key={appointment.id} className="flex items-center justify-between p-4 border border-border rounded-xl">
-                <div className="flex-1">
-                  <h4 className="font-medium text-foreground">{appointment.firstName} {appointment.lastName}</h4>
-                  <p className="text-sm text-muted-foreground">{appointment.doctor} • {appointment.department}</p>
-                  <p className="text-sm text-muted-foreground">{formatDate(appointment.date)} • {appointment.time}</p>
-                </div>
-                <Badge variant={getStatusColor(appointment.status)} size="sm">
-                  {appointment.status || 'pending'}
-                </Badge>
-              </div>
-            ))}
-            {appointments.length === 0 && (
-              <p className="text-muted-foreground text-center py-4">No appointments yet</p>
-            )}
+    // Department distribution for today's appointments
+    const departmentCounts = todayAppointments.reduce((acc, apt) => {
+      const dept = apt.departmentName || 'General';
+      acc[dept] = (acc[dept] || 0) + 1;
+      return acc;
+    }, {} as Record<string, number>);
+    
+    // Recent 5 notifications/activities (could be from appointments, contacts, etc.)
+    const recentActivities = [
+      ...appointments.map(apt => ({
+        type: 'appointment',
+        title: `Appointment ${apt.status}`,
+        description: `${apt.firstName} ${apt.lastName} with Dr. ${apt.doctorName}`,
+        time: apt.createdAt?.seconds ? new Date(apt.createdAt.seconds * 1000) : new Date(),
+        icon: <Calendar className="w-4 h-4" />
+      })),
+      ...contacts.map(contact => ({
+        type: 'contact',
+        title: 'New Contact Request',
+        description: `${contact.name} sent a message`,
+        time: contact.createdAt?.seconds ? new Date(contact.createdAt.seconds * 1000) : new Date(),
+        icon: <MessageCircle className="w-4 h-4" />
+      }))
+    ]
+    .sort((a, b) => b.time.getTime() - a.time.getTime())
+    .slice(0, 5);
+    
+    // Doctor availability calculation
+    const availableDoctors = doctors.filter(d => d.verified !== false);
+    const doctorStatuses = {
+      available: Math.floor(availableDoctors.length * 0.7), // 70% available (simulated data)
+      busy: Math.floor(availableDoctors.length * 0.2), // 20% busy
+      unavailable: Math.ceil(availableDoctors.length * 0.1) // 10% unavailable
+    };
+
+    // Format time elapsed from now
+    const getTimeAgo = (date: Date) => {
+      const seconds = Math.floor((new Date().getTime() - date.getTime()) / 1000);
+      let interval = seconds / 31536000;
+      if (interval > 1) return Math.floor(interval) + " years ago";
+      interval = seconds / 2592000;
+      if (interval > 1) return Math.floor(interval) + " months ago";
+      interval = seconds / 86400;
+      if (interval > 1) return Math.floor(interval) + " days ago";
+      interval = seconds / 3600;
+      if (interval > 1) return Math.floor(interval) + " hours ago";
+      interval = seconds / 60;
+      if (interval > 1) return Math.floor(interval) + " minutes ago";
+      return Math.floor(seconds) + " seconds ago";
+    };
+
+    return (
+      <div className="space-y-8">
+        {/* Header with welcome and date */}
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Welcome Back, Admin</h1>
+            <p className="text-muted-foreground mt-1">
+              Here's what's happening with your hospital today.
+            </p>
           </div>
-        </Card>
-
-        <Card premium className="p-6">
-          <h3 className="text-xl font-semibold text-foreground mb-6">Recent Contact Messages</h3>
-          <div className="space-y-4">
-            {contacts.slice(0, 5).map((contact) => (
-              <div key={contact.id} className="p-4 border border-border rounded-xl">
-                <h4 className="font-medium text-foreground">{contact.firstName} {contact.lastName}</h4>
-                <p className="text-sm text-muted-foreground">{contact.subject}</p>
-                <p className="text-sm text-muted-foreground truncate">{contact.message}</p>
-              </div>
-            ))}
-            {contacts.length === 0 && (
-              <p className="text-muted-foreground text-center py-4">No contact messages yet</p>
-            )}
-          </div>
-        </Card>
-      </div>
-    </div>
-  );
-
-  const renderAppointments = () => (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-foreground">Appointments Management</h2>
-        <Input
-          placeholder="Search appointments..."
-          className="max-w-xs"
-          onChange={(e) => {
-            // Add appointment search functionality here
-            // This would filter appointments based on patient name, doctor, etc.
-          }}
-        />
-      </div>
-
-      <Card premium className="overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-muted/50">
-              <tr>
-                <th className="text-left p-4 font-medium text-foreground">Patient</th>
-                <th className="text-left p-4 font-medium text-foreground">Doctor</th>
-                <th className="text-left p-4 font-medium text-foreground">Department</th>
-                <th className="text-left p-4 font-medium text-foreground">Date & Time</th>
-                <th className="text-left p-4 font-medium text-foreground">Status</th>
-                <th className="text-left p-4 font-medium text-foreground">Insurance</th>
-                <th className="text-left p-4 font-medium text-foreground">Contact</th>
-                <th className="text-left p-4 font-medium text-foreground">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {appointments.map((appointment) => (
-                <tr key={appointment.id} className="border-t border-border hover:bg-muted/10">
-                  <td className="p-4">
-                    <div>
-                      <p className="text-foreground font-medium">
-                        {appointment.firstName} {appointment.lastName}
-                        {appointment.isNewPatient && (
-                          <Badge variant="primary" size="sm" className="ml-2 bg-blue-50 text-blue-700 border-blue-200">
-                            New Patient
-                          </Badge>
-                        )}
-                      </p>
-                      <div className="space-y-1 mt-1">
-                        <div className="flex items-center text-xs text-muted-foreground">
-                          <Mail className="w-3 h-3 mr-1" />
-                          {appointment.email}
-                        </div>
-                        <div className="flex items-center text-xs text-muted-foreground">
-                          <Phone className="w-3 h-3 mr-1" />
-                          {appointment.phone}
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="p-4 text-foreground">
-                    <p className="font-medium">Dr. {appointment.doctorName}</p>
-                  </td>
-                  <td className="p-4 text-muted-foreground">
-                    {appointment.departmentName}
-                  </td>
-                  <td className="p-4 text-muted-foreground">
-                    <div>
-                      <p className="font-medium text-foreground">{formatDate(appointment.date)}</p>
-                      <p className="text-sm">{appointment.time}</p>
-                    </div>
-                  </td>
-                  <td className="p-4">
-                    <Badge variant={getStatusColor(appointment.status)} size="sm">
-                      {appointment.status || 'pending'}
-                    </Badge>
-                    {appointment.paymentStatus && (
-                      <Badge variant={appointment.paymentStatus === 'completed' ? 'success' : 'warning'} size="sm" className="ml-2">
-                        {appointment.paymentStatus}
-                      </Badge>
-                    )}
-                  </td>
-                  <td className="p-4">
-                    {appointment.insuranceProvider ? (
-                      <div className="text-sm">
-                        <p className="font-medium text-foreground">{appointment.insuranceProvider}</p>
-                        <p className="text-muted-foreground">{appointment.insuranceNumber}</p>
-                      </div>
-                    ) : (
-                      <span className="text-sm text-muted-foreground">Not provided</span>
-                    )}
-                  </td>
-                  
-                  {/* New Contact cell */}
-                  <td className="p-4">
-                    <div className="flex space-x-1">
-                      {appointment.phone && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
-                          title="WhatsApp"
-                          onClick={() => handleWhatsAppContact(
-                            appointment.phone, 
-                            `${appointment.firstName} ${appointment.lastName}`,
-                            true,
-                            appointment // Pass the entire appointment object
-                          )}
-                        >
-                          <MessageCircle className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {appointment.email && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                          title="Send Email"
-                          onClick={() => handleEmailContact(
-                            appointment.email,
-                            `${appointment.firstName} ${appointment.lastName}`,
-                            'Your Appointment Details',
-                            true,
-                            appointment // Pass the entire appointment object
-                          )}
-                        >
-                          <Send className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {appointment.phone && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
-                          title="Call"
-                          onClick={() => handlePhoneCall(appointment.phone)}
-                        >
-                          <PhoneCall className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </td>
-                  
-                  {/* ...existing actions cell... */}
-                  <td className="p-4">
-                    <div className="flex items-center space-x-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="hover:bg-success/10 hover:text-success"
-                        onClick={() => updateAppointmentStatus(appointment.id, 'confirmed')}
-                      >
-                        <Check className="w-4 h-4 mr-1" />
-                        Confirm
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="hover:bg-destructive/10 hover:text-destructive"
-                        onClick={() => updateAppointmentStatus(appointment.id, 'cancelled')}
-                      >
-                        <X className="w-4 h-4 mr-1" />
-                        Cancel
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => {
-                          setViewingAppointment(appointment);
-                          setShowAppointmentModal(true);
-                        }}
-                      >
-                        <Eye className="w-4 h-4" />
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-
-      {appointments.length === 0 && (
-        <Card premium className="p-8 text-center">
-          <Calendar className="w-12 h-12 text-muted-foreground mx-auto mb-4" />
-          <p className="text-muted-foreground">No appointments found</p>
-        </Card>
-      )}
-
-      {/* Appointment Details Modal */}
-      {showAppointmentModal && viewingAppointment && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
-          <div className="bg-background rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 z-20 flex justify-between items-center p-6 bg-background border-b">
-              <h3 className="text-xl font-semibold text-foreground">
-                Appointment Details
-              </h3>
-              <Button variant="ghost" size="sm" onClick={() => setShowAppointmentModal(false)}>
-                <X className="w-5 h-5" />
-              </Button>
+          
+          <div className="mt-4 lg:mt-0 flex items-center space-x-3">
+            <div className="px-4 py-2 bg-primary/10 text-primary rounded-lg flex items-center">
+              <Calendar className="w-4 h-4 mr-2" />
+              <span className="font-medium">{new Date().toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric' })}</span>
             </div>
             
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => window.location.reload()}
+            >
+              <svg className="w-4 h-4 mr-1" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+              </svg>
+              Refresh
+            </Button>
+          </div>
+        </div>
+
+        {/* Top Stats Row */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+          {/* Today's Appointments */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3 }}
+            className="bg-gradient-to-br from-primary/5 to-secondary/5 rounded-xl border border-border overflow-hidden"
+            whileHover={{ scale: 1.02, boxShadow: "0 10px 30px -15px rgba(0,0,0,0.15)" }}
+          >
             <div className="p-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <h4 className="font-medium text-foreground mb-3">Patient Information</h4>
-                  <div className="space-y-3">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Full Name</p>
-                      <p className="font-medium text-foreground">{viewingAppointment.firstName} {viewingAppointment.lastName}</p>
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center text-primary">
+                  <Calendar className="w-6 h-6" />
+                </div>
+                <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-primary to-secondary">
+                  {todayAppointments.length}
+                </span>
+              </div>
+              <h3 className="text-lg font-semibold text-foreground mb-1">Today's Appointments</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                {todayAppointments.length === 0 ? "No appointments scheduled today" : 
+                 `${appointmentStats.confirmed} confirmed, ${appointmentStats.pending} pending`}
+              </p>
+              
+              {/* Department distribution */}
+              <div className="flex flex-wrap gap-2 mt-3">
+                {Object.entries(departmentCounts).map(([dept, count], index) => (
+                  <span key={dept} className={`px-2 py-1 text-xs rounded-full text-white
+                    ${index % 4 === 0 ? 'bg-blue-500' : 
+                      index % 4 === 1 ? 'bg-green-500' : 
+                      index % 4 === 2 ? 'bg-purple-500' : 'bg-amber-500'}`}>
+                    {dept} ({Number(count)})
+                  </span>
+                ))}
+                {Object.keys(departmentCounts).length === 0 && (
+                  <span className="text-xs text-muted-foreground">No departments scheduled</span>
+                )}
+              </div>
+            </div>
+            <div className="px-6 py-3 bg-background/60 border-t border-border">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="w-full justify-center text-primary hover:text-primary hover:bg-primary/5"
+                onClick={() => setActiveTab('appointments')}
+              >
+                <Eye className="w-4 h-4 mr-2" />
+                View All Appointments
+              </Button>
+            </div>
+          </motion.div>
+
+          {/* Doctor Status */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.1 }}
+            className="rounded-xl border border-border overflow-hidden"
+            whileHover={{ scale: 1.02, boxShadow: "0 10px 30px -15px rgba(0,0,0,0.15)" }}
+          >
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center text-blue-600">
+                  <Stethoscope className="w-6 h-6" />
+                </div>
+                <span className="text-xl font-bold text-foreground">{doctors.length}</span>
+              </div>
+              <h3 className="text-lg font-semibold text-foreground mb-1">Doctors Available</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                {doctors.length === 0 ? "No doctors registered" : `${doctorStatuses.available} available now`}
+              </p>
+              
+              {/* Doctor availability chart */}
+              <div className="mt-3">
+                <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                  <span>Available</span>
+                  <span>Busy</span>
+                  <span>Unavailable</span>
+                </div>
+                <div className="w-full h-2 bg-muted rounded-full flex overflow-hidden">
+                  <div className="bg-green-500 h-full" style={{ width: `${(doctorStatuses.available / doctors.length) * 100}%` }}></div>
+                  <div className="bg-amber-500 h-full" style={{ width: `${(doctorStatuses.busy / doctors.length) * 100}%` }}></div>
+                  <div className="bg-red-500 h-full" style={{ width: `${(doctorStatuses.unavailable / doctors.length) * 100}%` }}></div>
+                </div>
+                
+                {/* Doctor avatars */}
+                {doctors.length > 0 && (
+                  <div className="flex mt-3 -space-x-2 overflow-hidden">
+                    {doctors.slice(0, 5).map((doctor, index) => (
+                      <div key={doctor.id} className="inline-block h-8 w-8 rounded-full border-2 border-white overflow-hidden" style={{ zIndex: 5-index }}>
+                        {doctor.image ? (
+                          <img src={doctor.image} alt={doctor.name} className="h-full w-full object-cover" />
+                        ) : (
+                          <div className="h-full w-full bg-primary/20 flex items-center justify-center text-primary text-xs font-medium">
+                            {doctor.name.substring(0, 2).toUpperCase()}
+                          </div>
+                        )}
+                      </div>
+                    ))}
+                    {doctors.length > 5 && (
+                      <div className="inline-flex h-8 w-8 items-center justify-center rounded-full border-2 border-white bg-gray-100 text-xs font-medium">
+                        +{doctors.length - 5}
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="px-6 py-3 bg-background/60 border-t border-border">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="w-full justify-center text-blue-600 hover:text-blue-700 hover:bg-blue-50"
+                onClick={() => setActiveTab('doctors')}
+              >
+                <UserCheck className="w-4 h-4 mr-2" />
+                Manage Doctors
+              </Button>
+            </div>
+          </motion.div>
+
+          {/* Services Overview */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.2 }}
+            className="rounded-xl border border-border overflow-hidden"
+            whileHover={{ scale: 1.02, boxShadow: "0 10px 30px -15px rgba(0,0,0,0.15)" }}
+          >
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center text-green-600">
+                  <Activity className="w-6 h-6" />
+                </div>
+                <span className="text-xl font-bold text-foreground">{services.length}</span>
+              </div>
+              <h3 className="text-lg font-semibold text-foreground mb-1">Active Services</h3>
+              <p className="text-sm text-muted-foreground mb-3">
+                {services.filter(s => s.visible).length} visible, {services.filter(s => !s.visible).length} hidden
+              </p>
+              
+              {/* Service categories */}
+              <div className="mt-3">
+                {services.length > 0 ? (
+                  <div className="space-y-2">
+                    {Array.from(new Set(services.map(s => s.category || 'Uncategorized'))).slice(0, 3).map((category, idx) => {
+                      const count = services.filter(s => (s.category || 'Uncategorized') === category).length;
+                      const percentage = Math.round((count / services.length) * 100);
+                      
+                      return (
+                        <div key={category} className="flex items-center justify-between">
+                          <span className="text-xs font-medium">{category}</span>
+                          <div className="flex items-center">
+                            <div className="w-24 h-1.5 bg-muted rounded-full overflow-hidden mr-2">
+                              <div 
+                                className={`h-full ${idx % 3 === 0 ? 'bg-green-500' : idx % 3 === 1 ? 'bg-blue-500' : 'bg-purple-500'}`} 
+                                style={{ width: `${percentage}%` }}
+                              ></div>
+                            </div>
+                            <span className="text-xs text-muted-foreground">{count}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <div className="text-center py-2">
+                    <p className="text-xs text-muted-foreground">No services available</p>
+                  </div>
+                )}
+              </div>
+            </div>
+            <div className="px-6 py-3 bg-background/60 border-t border-border">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="w-full justify-center text-green-600 hover:text-green-700 hover:bg-green-50"
+                onClick={() => setActiveTab('services')}
+              >
+                <Settings className="w-4 h-4 mr-2" />
+                Manage Services
+              </Button>
+            </div>
+          </motion.div>
+
+          {/* Contact Inquiries */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.3 }}
+            className="rounded-xl border border-border overflow-hidden"
+            whileHover={{ scale: 1.02, boxShadow: "0 10px 30px -15px rgba(0,0,0,0.15)" }}
+          >
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-4">
+                <div className="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center text-amber-600">
+                  <MessageCircle className="w-6 h-6" />
+                </div>
+                <span className="text-xl font-bold text-foreground">
+                  {contacts.length}
+                </span>
+              </div>
+              <h3 className="text-lg font-semibold text-foreground mb-1">Contact Inquiries</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                {contacts.length === 0 ? "No pending inquiries" : `${contacts.length} inquiries to respond`}
+              </p>
+              
+              {/* Recent contacts */}
+              {contacts.length > 0 ? (
+                <div className="space-y-2">
+                  {contacts.slice(0, 2).map((contact) => (
+                    <div key={contact.id} className="text-xs bg-muted/30 p-2 rounded-lg">
+                      <div className="font-medium truncate">{contact.name}</div>
+                      <div className="text-muted-foreground truncate">{contact.message?.substring(0, 30)}...</div>
                     </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Email</p>
-                      <p className="font-medium text-foreground">{viewingAppointment.email}</p>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-2">
+                  <p className="text-xs text-muted-foreground">Your inbox is empty</p>
+                </div>
+              )}
+            </div>
+            <div className="px-6 py-3 bg-background/60 border-t border-border">
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="w-full justify-center text-amber-600 hover:text-amber-700 hover:bg-amber-50"
+                onClick={() => setActiveTab('contacts')}
+              >
+                <Mail className="w-4 h-4 mr-2" />
+                View All Messages
+              </Button>
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Middle Row - Appointment Status & Quick Actions */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Appointment Status Distribution */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.4 }}
+            className="lg:col-span-2 rounded-xl border border-border overflow-hidden"
+            whileHover={{ scale: 1.01, boxShadow: "0 10px 30px -15px rgba(0,0,0,0.15)" }}
+          >
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-foreground flex items-center">
+                  <Activity className="w-5 h-5 mr-2 text-primary" />
+                  Appointment Analytics
+                </h3>
+                <div className="text-sm text-muted-foreground">
+                  Total: {appointmentStats.total}
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-6">
+                {/* Chart */}
+                <div className="h-60">
+                  <div className="flex h-full items-end gap-2">
+                    <div className="flex-1 flex flex-col justify-end items-center">
+                      <div 
+                        className="w-full bg-primary/80 rounded-t-md" 
+                        style={{ height: `${(appointmentStats.confirmed / Math.max(1, appointmentStats.total)) * 100}%` }}
+                      ></div>
+                      <span className="mt-2 text-xs">Confirmed</span>
+                      <span className="font-medium">{appointmentStats.confirmed}</span>
                     </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Phone</p>
-                      <p className="font-medium text-foreground">{viewingAppointment.phone}</p>
+                    <div className="flex-1 flex flex-col justify-end items-center">
+                      <div 
+                        className="w-full bg-yellow-500/80 rounded-t-md" 
+                        style={{ height: `${(appointmentStats.pending / Math.max(1, appointmentStats.total)) * 100}%` }}
+                      ></div>
+                      <span className="mt-2 text-xs">Pending</span>
+                      <span className="font-medium">{appointmentStats.pending}</span>
                     </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Patient Type</p>
-                      <p className="font-medium text-foreground">
-                        {viewingAppointment.isNewPatient ? 'New Patient' : 'Existing Patient'}
-                      </p>
+                    <div className="flex-1 flex flex-col justify-end items-center">
+                      <div 
+                        className="w-full bg-red-500/80 rounded-t-md" 
+                        style={{ height: `${(appointmentStats.cancelled / Math.max(1, appointmentStats.total)) * 100}%` }}
+                      ></div>
+                      <span className="mt-2 text-xs">Cancelled</span>
+                      <span className="font-medium">{appointmentStats.cancelled}</span>
+                    </div>
+                    <div className="flex-1 flex flex-col justify-end items-center">
+                      <div 
+                        className="w-full bg-blue-500/80 rounded-t-md" 
+                        style={{ height: `${(appointmentStats.completed / Math.max(1, appointmentStats.total)) * 100}%` }}
+                      ></div>
+                      <span className="mt-2 text-xs">Completed</span>
+                      <span className="font-medium">{appointmentStats.completed}</span>
                     </div>
                   </div>
                 </div>
                 
-                <div>
-                  <h4 className="font-medium text-foreground mb-3">Appointment Details</h4>
-                  <div className="space-y-3">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Doctor</p>
-                      <p className="font-medium text-foreground">Dr. {viewingAppointment.doctorName}</p>
+                {/* Weekly distribution */}
+                <div className="space-y-4">
+                  <h4 className="text-sm font-medium text-foreground">This Week's Distribution</h4>
+                  
+                  {/* Weekly heatmap */}
+                  <div className="flex space-x-1 justify-between">
+                    {Array.from({ length: 7 }).map((_, index) => {
+                      // Calculate date for this weekday
+                      const date = new Date();
+                      date.setDate(date.getDate() - date.getDay() + index);
+                      const dateStr = date.toISOString().split('T')[0];
+                      
+                      // Count appointments for this day
+                      const count = appointments.filter(apt => {
+                        if (!apt.date) return false;
+                        const aptDate = apt.date.seconds 
+                          ? new Date(apt.date.seconds * 1000).toISOString().split('T')[0]
+                          : new Date(apt.date).toISOString().split('T')[0];
+                        return aptDate === dateStr;
+                      }).length;
+                      
+                      // Calculate intensity for heatmap (0-4)
+                      const max = Math.max(
+                        5,
+                        ...Object.values(
+                          appointments
+                            .map(a => {
+                              if (!a.date) return null;
+                              const aptDate = a.date.seconds
+                                ? new Date(a.date.seconds * 1000).toISOString().split('T')[0]
+                                : new Date(a.date).toISOString().split('T')[0];
+                              return aptDate;
+                            })
+                            .filter((date): date is string => !!date)
+                            .reduce((acc, date) => {
+                              acc[date] = (acc[date] || 0) + 1;
+                              return acc;
+                            }, {} as Record<string, number>)
+                        )
+                      );
+                      
+                      const intensity = Math.min(4, Math.ceil((count / max) * 4));
+                      const today = new Date().toISOString().split('T')[0] === dateStr;
+                      
+                      const dayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+                      
+                      return (
+                        <div key={index} className="flex flex-col items-center">
+                          <div className="text-xs text-muted-foreground mb-1">
+                            {dayLabels[index]}
+                          </div>
+                          <div 
+                            className={`w-8 h-8 rounded flex items-center justify-center text-xs ${
+                              today ? 'bg-primary text-white' : 
+                              intensity === 0 ? 'bg-muted/30 text-muted-foreground' :
+                              intensity === 1 ? 'bg-blue-100 text-blue-800' :
+                              intensity === 2 ? 'bg-blue-200 text-blue-800' :
+                              intensity === 3 ? 'bg-blue-300 text-blue-800' :
+                              'bg-blue-400 text-white'
+                            }`}
+                            title={`${count} appointments on ${date.toLocaleDateString()}`}
+                          >
+                            {date.getDate()}
+                          </div>
+                          <div className="text-xs mt-1">
+                            {count > 0 ? count : '-'}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                  
+                  {/* Distribution by time of day */}
+                  <div className="mt-4">
+                    <h4 className="text-sm font-medium text-foreground mb-2">Time Distribution</h4>
+                    <div className="w-full bg-muted/30 h-2 rounded-full overflow-hidden">
+                      <div className="bg-blue-500 h-full rounded-full" style={{ width: '35%' }}></div>
                     </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Department</p>
-                      <p className="font-medium text-foreground">{viewingAppointment.departmentName}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Date & Time</p>
-                      <p className="font-medium text-foreground">
-                        {formatDate(viewingAppointment.date)} at {viewingAppointment.time}
-                      </p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Status</p>
-                      <Badge variant={getStatusColor(viewingAppointment.status)}>
-                        {viewingAppointment.status || 'pending'}
-                      </Badge>
+                    <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                      <span>Morning (35%)</span>
+                      <span>Afternoon (45%)</span>
+                      <span>Evening (20%)</span>
                     </div>
                   </div>
                 </div>
               </div>
+            </div>
+          </motion.div>
+
+          {/* Quick Actions Panel */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.5 }}
+            className="rounded-xl border border-border overflow-hidden"
+            whileHover={{ scale: 1.01, boxShadow: "0 10px 30px -15px rgba(0,0,0,0.15)" }}
+          >
+            <div className="p-6">
+              <div className="flex items-center mb-6">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 text-primary flex items-center justify-center mr-3">
+                  <Zap className="w-5 h-5" />
+                </div>
+                <h3 className="text-lg font-semibold text-foreground">Quick Actions</h3>
+              </div>
               
-              {/* Insurance Information */}
-              <div className="mt-6 pt-6 border-t border-border">
-                <h4 className="font-medium text-foreground mb-3">Insurance Information</h4>
-                {viewingAppointment.insuranceProvider ? (
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Provider</p>
-                      <p className="font-medium text-foreground">{viewingAppointment.insuranceProvider}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Policy Number</p>
-                      <p className="font-medium text-foreground">{viewingAppointment.insuranceNumber}</p>
-                    </div>
-                  </div>
-                ) : (
-                  <p className="text-muted-foreground">No insurance information provided</p>
+              <div className="space-y-3">
+                <Button 
+                  className="w-full justify-start"
+                  variant="outline"
+                  onClick={() => {
+                    resetDoctorForm();
+                    setActiveTab('doctors');
+                    setShowAddDoctorModal(true);
+                  }}
+                >
+                  <UserPlus className="w-4 h-4 mr-2 text-green-500" />
+                  Add New Doctor
+                </Button>
+                
+                <Button 
+                  className="w-full justify-start"
+                  variant="outline"
+                  onClick={() => {
+                    setActiveTab('services');
+                    setServiceToEdit(null);
+                    setIsServiceFormOpen(true);
+                  }}
+                >
+                  <Plus className="w-4 h-4 mr-2 text-blue-500" />
+                  Create New Service
+                </Button>
+                
+                <Button 
+                  className="w-full justify-start"
+                  variant="outline"
+                  onClick={() => setActiveTab('appointments')}
+                >
+                  <CheckSquare className="w-4 h-4 mr-2 text-amber-500" />
+                  Review Appointments
+                </Button>
+                
+                <Button 
+                  className="w-full justify-start"
+                  variant="outline"
+                  onClick={() => setActiveTab('contacts')}
+                >
+                  <MessageCircle className="w-4 h-4 mr-2 text-purple-500" />
+                  Respond to Inquiries
+                  {contacts.length > 0 && (
+                    <span className="ml-auto rounded-full bg-red-500 text-white text-xs w-5 h-5 flex items-center justify-center">
+                      {contacts.length > 9 ? '9+' : contacts.length}
+                    </span>
+                  )}
+                </Button>
+                
+                <Button 
+                  className="w-full justify-start"
+                  variant="outline"
+                >
+                  <FileText className="w-4 h-4 mr-2 text-indigo-500" />
+                  Generate Reports
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+
+        {/* Bottom Row - Recent Activities & Weekly Calendar */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Recent Activities/Notifications */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.6 }}
+            className="lg:col-span-2 rounded-xl border border-border overflow-hidden"
+            whileHover={{ scale: 1.01, boxShadow: "0 10px 30px -15px rgba(0,0,0,0.15)" }}
+          >
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-6">
+                <h3 className="text-lg font-semibold text-foreground flex items-center">
+                  <Bell className="w-5 h-5 mr-2 text-primary" />
+                  Recent Activities
+                </h3>
+                
+                {recentActivities.length > 0 && (
+                  <Button variant="outline" size="sm">
+                    Mark All Read
+                  </Button>
                 )}
               </div>
               
-              {/* Additional Notes/Reason */}
-              {viewingAppointment.message && (
-                <div className="mt-6 pt-6 border-t border-border">
-                  <h4 className="font-medium text-foreground mb-3">Visit Reason / Additional Notes</h4>
-                  <p className="text-muted-foreground bg-muted/30 p-4 rounded-lg">{viewingAppointment.message}</p>
+              <div className="space-y-4">
+                {recentActivities.length > 0 ? (
+                  recentActivities.map((activity, index) => (
+                    <div 
+                      key={index} 
+                      className={`p-4 rounded-lg border border-border flex ${
+                        index === 0 ? 'bg-primary/5' : 'bg-background'
+                      }`}
+                    >
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 mr-4 ${
+                        activity.type === 'appointment' ? 'bg-blue-100 text-blue-600' : 
+                        activity.type === 'contact' ? 'bg-green-100 text-green-600' : 
+                        'bg-purple-100 text-purple-600'
+                      }`}>
+                        {activity.icon}
+                      </div>
+                      <div className="flex-1">
+                        <div className="flex justify-between">
+                          <h4 className="font-medium text-foreground">{activity.title}</h4>
+                          <span className="text-xs text-muted-foreground">
+                            {getTimeAgo(activity.time)}
+                          </span>
+                        </div>
+                        <p className="text-sm text-muted-foreground">
+                          {activity.description}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8">
+                    <div className="w-16 h-16 bg-muted/30 rounded-full flex items-center justify-center mx-auto mb-3">
+                      <Bell className="w-8 h-8 text-muted-foreground" />
+                    </div>
+                    <h4 className="text-foreground font-medium">No Recent Activities</h4>
+                    <p className="text-sm text-muted-foreground">
+                      New activities will appear here as they happen
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+            
+            {recentActivities.length > 0 && (
+              <div className="px-6 py-3 bg-muted/10 border-t border-border">
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="w-full justify-center"
+                >
+                  View All Activities
+                </Button>
+              </div>
+            )}
+          </motion.div>
+
+          {/* Hospital Stats */}
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: 0.7 }}
+            className="rounded-xl border border-border overflow-hidden"
+            whileHover={{ scale: 1.01, boxShadow: "0 10px 30px -15px rgba(0,0,0,0.15)" }}
+          >
+            <div className="p-6">
+              <div className="flex items-center mb-6">
+                <div className="w-10 h-10 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center mr-3">
+                  <Building className="w-5 h-5" />
                 </div>
-              )}
-              
-              {/* Add Contact Options */}
-              <div className="mt-6 pt-6 border-t border-border">
-                <h4 className="font-medium text-foreground mb-3">Contact Patient</h4>
-                <div className="flex flex-wrap gap-3">
-                  {viewingAppointment.phone && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex items-center gap-2 text-green-600 border-green-200 hover:bg-green-50"
-                      onClick={() => handleWhatsAppContact(
-                        viewingAppointment.phone, 
-                        `${viewingAppointment.firstName} ${viewingAppointment.lastName}`,
-                        true,
-                        viewingAppointment // Pass the entire appointment object
-                      )}
-                    >
-                      <MessageCircle className="w-4 h-4" />
-                      WhatsApp
-                    </Button>
-                  )}
-                  
-                  {viewingAppointment.email && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex items-center gap-2 text-blue-600 border-blue-200 hover:bg-blue-50"
-                      onClick={() => handleEmailContact(
-                        viewingAppointment.email,
-                        `${viewingAppointment.firstName} ${viewingAppointment.lastName}`,
-                        'Your Appointment Details',
-                        true,
-                        viewingAppointment // Pass the entire appointment object
-                      )}
-                    >
-                      <Send className="w-4 h-4" />
-                      Send Email
-                    </Button>
-                  )}
-                  
-                  {viewingAppointment.phone && (
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex items-center gap-2 text-orange-600 border-orange-200 hover:bg-orange-50"
-                      onClick={() => handlePhoneCall(viewingAppointment.phone)}
-                    >
-                      <PhoneCall className="w-4 h-4" />
-                      Call Patient
-                    </Button>
-                  )}
-                </div>
+                <h3 className="text-lg font-semibold text-foreground">Hospital Stats</h3>
               </div>
               
-              {/* Actions */}
-              <div className="mt-8 pt-6 border-t border-border flex justify-end gap-3">
+              {/* Stats rows */}
+              <div className="space-y-5">
+                {/* Bed occupancy */}
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm font-medium">Bed Occupancy</span>
+                    <span className="text-sm text-muted-foreground">76%</span>
+                  </div>
+                  <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                    <div className="bg-blue-500 h-full" style={{ width: '76%' }}></div>
+                  </div>
+                  <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                    <span>152/200 beds</span>
+                    <span className="text-green-600">24 available</span>
+                  </div>
+                </div>
+                
+                {/* Emergency room status */}
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm font-medium">Emergency Room</span>
+                    <span className="text-sm text-muted-foreground">55%</span>
+                  </div>
+                  <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                    <div className="bg-green-500 h-full" style={{ width: '55%' }}></div>
+                  </div>
+                  <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                    <span>11/20 beds</span>
+                    <span className="text-green-600">Accepting patients</span>
+                  </div>
+                </div>
+                
+                {/* Surgery rooms */}
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm font-medium">Surgery Rooms</span>
+                    <span className="text-sm text-muted-foreground">83%</span>
+                  </div>
+                  <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
+                    <div className="bg-amber-500 h-full" style={{ width: '83%' }}></div>
+                  </div>
+                  <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                    <span>5/6 rooms</span>
+                    <span className="text-amber-600">Limited availability</span>
+                  </div>
+                </div>
+                
+                {/* Staff on duty */}
+                <div>
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-sm font-medium">Staff On Duty</span>
+                    <span className="text-sm text-muted-foreground">65/80</span>
+                  </div>
+                  <div className="flex space-x-1 mt-1">
+                    {Array.from({ length: 10 }).map((_, index) => (
+                      <div 
+                        key={index} 
+                        className={`h-8 w-8 rounded-full flex items-center justify-center text-xs ${
+                          index < 8 ? 'bg-primary text-white' : 'bg-muted/30 text-muted-foreground'
+                        }`}
+                      >
+                        {index < 8 ? ((index + 1) * 8) + '%' : ''}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div className="px-6 py-3 bg-muted/10 border-t border-border">
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Last updated: 5 minutes ago</span>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  className="p-0 h-auto text-primary hover:text-primary hover:bg-transparent hover:underline"
+                >
+                  View Details
+                </Button>
+              </div>
+            </div>
+          </motion.div>
+        </div>
+      </div>
+    );
+  }
+
+  // Render doctors tab content
+  function renderDoctors() {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-bold text-foreground">Doctors Management</h2>
+          <Button
+            variant="primary"
+            onClick={() => {
+              resetDoctorForm();
+              setShowAddDoctorModal(true);
+            }}
+          >
+            <Plus className="w-4 h-4 mr-2" />
+            Add Doctor
+          </Button>
+        </div>
+        
+        <DoctorGrid
+          doctors={doctors}
+          onEdit={(doctor) => {
+            setEditingDoctor(doctor);
+            setShowAddDoctorModal(true);
+          }}
+          onDelete={confirmDeleteDoctor}
+        />
+        
+        {/* Add Doctor Modal - Fix: Providing all required props */}
+        <DoctorFormDrawer
+          isOpen={showAddDoctorModal}
+          onClose={() => {
+            setShowAddDoctorModal(false);
+            resetDoctorForm();
+          }}
+          doctorData={editingDoctor}
+          onSubmit={handleDoctorSubmit}
+          isSubmitting={isSubmitting}
+          uploadProgress={uploadProgress}
+          uploadError={uploadError}
+          handleImageChange={handleImageChange}
+          imagePreview={imagePreview}
+          resetForm={resetDoctorForm}
+        />
+      </div>
+    );
+  }
+
+  // Update this function inside your AdminDashboard component to fix the closing tag issues
+  function renderServices() {
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-bold text-foreground">Services Management</h2>
+          <div className="flex items-center space-x-3">
+            <div className="flex items-center rounded-lg border border-border overflow-hidden">
+              <Button 
+                variant={viewMode === 'grid' ? 'secondary' : 'ghost'} 
+                size="sm"
+                onClick={() => {
+                  setViewMode('grid');
+                  localStorage.setItem('servicesViewMode', 'grid');
+                }}
+                className="rounded-none"
+              >
+                <Grid className="w-4 h-4" />
+              </Button>
+              <Button 
+                variant={viewMode === 'table' ? 'secondary' : 'ghost'} 
+                size="sm"
+                onClick={() => {
+                  setViewMode('table');
+                  localStorage.setItem('servicesViewMode', 'table');
+                }}
+                className="rounded-none"
+              >
+                <List className="w-4 h-4" />
+              </Button>
+            </div>
+            
+            <Button
+              variant="primary"
+              onClick={() => {
+                setServiceToEdit(null);
+                setIsServiceFormOpen(true);
+              }}
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Add Service
+            </Button>
+          </div>
+        </div>
+
+        {services.length === 0 ? (
+          <div className="p-12 text-center bg-muted/30 rounded-xl border border-border">
+            <h3 className="text-xl font-semibold mb-3">No services found</h3>
+            <p className="text-muted-foreground mb-6">
+              Add your first service to display it on the website.
+            </p>
+            <Button 
+              variant="primary"
+              onClick={() => {
+                setServiceToEdit(null);
+                setIsServiceFormOpen(true);
+              }}
+            >
+              <Plus className="w-5 h-5 mr-2" />
+              Add First Service
+            </Button>
+          </div>
+        ) : viewMode === 'grid' ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {services.map((service) => (
+              <Card key={service.id} premium className="h-full overflow-hidden group">
+                {/* Card Header with Image */}
+                <div className="relative h-48 bg-gradient-to-br from-primary/20 to-secondary/20 overflow-hidden">
+                  {service.imageUrl ? (
+                    <img 
+                      src={service.imageUrl} 
+                      alt={service.name}
+                      className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <div className="w-20 h-20 rounded-full bg-muted/20 flex items-center justify-center">
+                        <Info className="w-10 h-10 text-muted-foreground" />
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Service Name Overlay */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/30 to-transparent flex items-end">
+                    <div className="p-4 w-full">
+                      <h3 className="text-lg font-semibold text-white">{service.name}</h3>
+                    </div>
+                  </div>
+                </div>
+                
+                {/* Card Content */}
+                <div className="p-4">
+                  <p className="text-muted-foreground text-sm line-clamp-2">
+                    {service.shortDescription || service.description}
+                  </p>
+                  
+                  {/* Status badges */}
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    {service.visible ? (
+                      <Badge variant="success" size="sm" className="flex items-center gap-1">
+                        <Eye className="w-3 h-3" />
+                        Visible
+                      </Badge>
+                    ) : (
+                      <Badge variant="error" size="sm" className="flex items-center gap-1">
+                        <EyeOff className="w-3 h-3" />
+                        Hidden
+                      </Badge>
+                    )}
+                    
+                    {service.available24h && (
+                      <Badge variant="info" size="sm" className="flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        24/7
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+                
+                {/* Actions */}
+                <div className="p-4 pt-2 flex items-center justify-between mt-auto border-t border-border">
+                  <div className="text-xs text-muted-foreground">
+                    Order: <span className="font-medium">{service.order}</span>
+                  </div>
+                  <div className="flex space-x-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-blue-500 hover:text-blue-600 hover:bg-blue-50"
+                      onClick={() => {
+                        setServiceToEdit(service);
+                        setIsServiceFormOpen(true);
+                      }}
+                    >
+                      <Edit2 className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                      onClick={() => {
+                        setServiceToDelete(service);
+                        setIsServiceDeleteDialogOpen(true);
+                      }}
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="hover:text-primary hover:bg-primary/10"
+                      onClick={() => toggleServiceVisibility(service)}
+                    >
+                      {service.visible ? <Eye className="w-4 h-4" /> : <EyeOff className="w-4 h-4" />}
+                    </Button>
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <Card premium className="overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-muted/50">
+                  <tr>
+                    <th className="text-left p-4 font-medium text-foreground">Order</th>
+                    <th className="text-left p-4 font-medium text-foreground">Service</th>
+                    <th className="text-left p-4 font-medium text-foreground">Category</th>
+                    <th className="text-left p-4 font-medium text-foreground">Status</th>
+                    <th className="text-left p-4 font-medium text-foreground">24/7</th>
+                    <th className="text-right p-4 font-medium text-foreground">Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {services.map((service) => (
+                    <tr key={service.id} className="border-t border-border hover:bg-muted/10">
+                      <td className="p-4 text-center w-16">
+                        <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-muted text-foreground">
+                          {service.order}
+                        </span>
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center">
+                          <div className="w-10 h-10 rounded overflow-hidden bg-muted mr-3">
+                            {service.imageUrl ? (
+                              <img 
+                                src={service.imageUrl} 
+                                alt={service.name} 
+                                className="w-full h-full object-cover"
+                              />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center bg-primary/10">
+                                <Info className="w-5 h-5 text-primary" />
+                              </div>
+                            )}
+                          </div>
+                          <div>
+                            <p className="font-medium text-foreground">{service.name}</p>
+                            <p className="text-xs text-muted-foreground truncate max-w-md">
+                              {service.shortDescription}
+                            </p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="p-4 text-muted-foreground">
+                        {service.category || 'Uncategorized'}
+                      </td>
+                      <td className="p-4">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={() => toggleServiceVisibility(service)}
+                          className={service.visible ? "text-success" : "text-muted-foreground"}
+                        >
+                          {service.visible ? (
+                            <Eye className="w-4 h-4 mr-1" />
+                          ) : (
+                            <EyeOff className="w-4 h-4 mr-1" />
+                          )}
+                          {service.visible ? 'Visible' : 'Hidden'}
+                        </Button>
+                      </td>
+                      <td className="p-4 text-muted-foreground">
+                        {service.available24h ? (
+                          <span className="text-success">Yes</span>
+                        ) : (
+                          <span>No</span>
+                        )}
+                      </td>
+                      <td className="p-4 text-right">
+                        <div className="flex justify-end space-x-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => {
+                              setServiceToEdit(service);
+                              setIsServiceFormOpen(true);
+                            }}
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                            onClick={() => {
+                              setServiceToDelete(service);
+                              setIsServiceDeleteDialogOpen(true);
+                            }}
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </Button>
+                          <a
+                            href={`/services#${service.id}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center justify-center rounded-md px-2 py-1 text-gray-500 hover:text-gray-600 hover:bg-gray-50 text-sm transition-colors"
+                          >
+                            <ExternalLink className="w-4 h-4" />
+                          </a>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Card>
+        )}
+
+        {/* Service Form Drawer */}
+        {isServiceFormOpen && (
+          <ServiceFormDrawer
+            isOpen={isServiceFormOpen}
+            onClose={() => setIsServiceFormOpen(false)}
+            service={serviceToEdit}
+            onSave={(updatedService) => {
+              if (serviceToEdit) {
+                setServices(services.map(s => s.id === updatedService.id ? updatedService : s));
+                toast.success('Service updated successfully');
+              } else {
+                setServices([...services, updatedService]);
+                toast.success('Service added successfully');
+              }
+              setIsServiceFormOpen(false);
+            }}
+          />
+        )}
+
+        {/* Delete Confirmation Dialog */}
+        {isServiceDeleteDialogOpen && serviceToDelete && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+            <div className="bg-background rounded-lg p-6 w-full max-w-md">
+              <h3 className="text-lg font-bold mb-4">Delete Service</h3>
+              <p className="text-muted-foreground mb-4">
+                Are you sure you want to delete "{serviceToDelete.name}"? This action cannot be undone.
+              </p>
+              <div className="flex justify-end space-x-3">
                 <Button
                   variant="outline"
-                  onClick={() => {
-                    updateAppointmentStatus(viewingAppointment.id, 'cancelled');
-                    setShowAppointmentModal(false);
-                  }}
+                  onClick={() => setIsServiceDeleteDialogOpen(false)}
                 >
-                  <X className="w-4 h-4 mr-2" />
-                  Cancel Appointment
+                  Cancel
                 </Button>
                 <Button
                   variant="primary"
                   onClick={() => {
-                    updateAppointmentStatus(viewingAppointment.id, 'confirmed');
-                    setShowAppointmentModal(false);
+                    deleteServiceItem(serviceToDelete.id);
+                    setIsServiceDeleteDialogOpen(false);
                   }}
                 >
-                  <Check className="w-4 h-4 mr-2" />
-                  Confirm Appointment
+                  Delete
                 </Button>
               </div>
             </div>
           </div>
-        </div>
-      )}
-    </div>
-  );
-
-  const renderDoctors = () => (
-    <div>
-      {/* TODO: Implement doctors management UI here */}
-      <p className="text-muted-foreground text-center py-8">Doctors management coming soon.</p>
-    </div>
-  );
-
-  const renderContacts = () => (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold text-foreground">Contacts Management</h2>
+        )}
       </div>
-
-      <Card premium className="overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead className="bg-muted/50">
-              <tr>
-                <th className="text-left p-4 font-medium text-foreground">Name</th>
-                <th className="text-left p-4 font-medium text-foreground">Email</th>
-                <th className="text-left p-4 font-medium text-foreground">Subject</th>
-                <th className="text-left p-4 font-medium text-foreground">Message</th>
-                <th className="text-left p-4 font-medium text-foreground">Date</th>
-                <th className="text-left p-4 font-medium text-foreground">Contact</th>
-                <th className="text-left p-4 font-medium text-foreground">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {contacts.map((contact) => (
-                <tr key={contact.id} className="border-t border-border hover:bg-muted/10">
-                  <td className="p-4 text-foreground">{contact.firstName} {contact.lastName}</td>
-                  <td className="p-4 text-muted-foreground">{contact.email}</td>
-                  <td className="p-4 text-muted-foreground">{contact.subject}</td>
-                  <td className="p-4 text-muted-foreground truncate max-w-xs">{contact.message}</td>
-                  <td className="p-4 text-muted-foreground">{formatDate(contact.createdAt)}</td>
-                  
-                  {/* New Contact Actions cell */}
-                  <td className="p-4">
-                    <div className="flex space-x-1">
-                      {contact.phone && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 text-green-600 hover:text-green-700 hover:bg-green-50"
-                          title="WhatsApp"
-                          onClick={() => handleWhatsAppContact(contact.phone, `${contact.firstName} ${contact.lastName}`)}
-                        >
-                          <MessageCircle className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {contact.email && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 text-blue-600 hover:text-blue-700 hover:bg-blue-50"
-                          title="Send Email"
-                          onClick={() => handleEmailContact(
-                            contact.email, 
-                            `${contact.firstName} ${contact.lastName}`, 
-                            contact.subject
-                          )}
-                        >
-                          <Send className="h-4 w-4" />
-                        </Button>
-                      )}
-                      {contact.phone && (
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-8 w-8 p-0 text-orange-600 hover:text-orange-700 hover:bg-orange-50"
-                          title="Call"
-                          onClick={() => handlePhoneCall(contact.phone)}
-                        >
-                          <PhoneCall className="h-4 w-4" />
-                        </Button>
-                      )}
-                    </div>
-                  </td>
-                  
-                  <td className="p-4">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="hover:bg-destructive/10 hover:text-destructive"
-                      onClick={() => deleteContact(contact.id)}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
-      
-      {contacts.length === 0 && (
-        <Card premium className="p-8 text-center">
-          <p className="text-muted-foreground">No contacts found</p>
-        </Card>
-      )}
-
-      {/* Contact Details Modal */}
-      {showContactModal && viewingContact && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-background rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 z-20 flex justify-between items-center p-6 bg-background border-b">
-              <h3 className="text-xl font-semibold text-foreground">
-                Contact Message Details
-              </h3>
-              <Button variant="ghost" size="sm" onClick={() => setShowContactModal(false)}>
-                <X className="w-5 h-5" />
-              </Button>
-            </div>
-            
-            <div className="p-6">
-              <div className="space-y-6">
-                <div>
-                  <h4 className="font-medium text-foreground mb-2">Sender Information</h4>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 bg-muted/20 p-4 rounded-lg">
-                    <div>
-                      <p className="text-sm text-muted-foreground">Full Name</p>
-                      <p className="font-medium text-foreground">{viewingContact.firstName} {viewingContact.lastName}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Email</p>
-                      <p className="font-medium text-foreground">{viewingContact.email}</p>
-                    </div>
-                    {viewingContact.phone && (
-                      <div>
-                        <p className="text-sm text-muted-foreground">Phone</p>
-                        <p className="font-medium text-foreground">{viewingContact.phone}</p>
-                      </div>
-                    )}
-                    <div>
-                      <p className="text-sm text-muted-foreground">Date Received</p>
-                      <p className="font-medium text-foreground">{formatDate(viewingContact.createdAt)}</p>
-                    </div>
-                  </div>
-                </div>
-                
-                <div>
-                  <h4 className="font-medium text-foreground mb-2">Message</h4>
-                  <div className="bg-muted/20 p-4 rounded-lg">
-                    <div className="mb-4">
-                      <p className="text-sm text-muted-foreground">Subject</p>
-                      <p className="font-medium text-foreground">{viewingContact.subject}</p>
-                    </div>
-                    <div>
-                      <p className="text-sm text-muted-foreground">Content</p>
-                      <div className="mt-2 p-4 bg-background rounded-lg whitespace-pre-wrap">
-                        {viewingContact.message}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
-                {/* Contact Actions */}
-                <div className="mt-6 pt-6 border-t border-border">
-                  <h4 className="font-medium text-foreground mb-3">Contact Actions</h4>
-                  <div className="flex flex-wrap gap-3">
-                    {viewingContact.phone && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex items-center gap-2 text-green-600 border-green-200 hover:bg-green-50"
-                        onClick={() => handleWhatsAppContact(viewingContact.phone, `${viewingContact.firstName} ${viewingContact.lastName}`)}
-                      >
-                        <MessageCircle className="w-4 h-4" />
-                        WhatsApp
-                      </Button>
-                    )}
-                    
-                    {viewingContact.email && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex items-center gap-2 text-blue-600 border-blue-200 hover:bg-blue-50"
-                        onClick={() => handleEmailContact(
-                          viewingContact.email, 
-                          `${viewingContact.firstName} ${viewingContact.lastName}`, 
-                          viewingContact.subject
-                        )}
-                      >
-                        <Send className="w-4 h-4" />
-                        Send Email
-                      </Button>
-                    )}
-                    
-                    {viewingContact.phone && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="flex items-center gap-2 text-orange-600 border-orange-200 hover:bg-orange-50"
-                        onClick={() => handlePhoneCall(viewingContact.phone)}
-                      >
-                        <PhoneCall className="w-4 h-4" />
-                        Call
-                      </Button>
-                    )}
-                    
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex items-center gap-2 text-red-600 border-red-200 hover:bg-red-50"
-                      onClick={() => {
-                        if(window.confirm("Are you sure you want to delete this contact message?")) {
-                          deleteContact(viewingContact.id);
-                          setShowContactModal(false);
-                        }
-                      }}
-                    >
-                      <Trash2 className="w-4 h-4" />
-                      Delete
-                    </Button>
-                  </div>
-                </div>
-                
-                <div className="flex justify-end mt-6">
-                  <Button 
-                    variant="primary"
-                    onClick={() => setShowContactModal(false)}
-                  >
-                    Close
-                  </Button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
   );
+};
 
-  // WhatsApp contact handler with professional templated message
-  const handleWhatsAppContact = (phone: string, name?: string, isAppointment?: boolean, appointmentData?: any) => {
-    // Remove non-digit characters and ensure country code (assume +91 for India if not present)
-    let cleanedPhone = phone.replace(/\D/g, '');
-    if (!cleanedPhone.startsWith('91') && cleanedPhone.length === 10) {
-      cleanedPhone = '91' + cleanedPhone;
-    }
-    
-    let message = '';
-    
-    if (isAppointment && appointmentData) {
-      // Professional appointment confirmation message with all details
-      const formattedDate = formatDate(appointmentData.date);
-      message = `Dear ${name},
+// WhatsApp contact handler
+const handleWhatsAppContact = (
+  phone: string,
+  name?: string,
+  isAppointment?: boolean,
+  appointmentData?: any
+) => {
+  // Remove non-digit characters and ensure country code (assume +91 for India if not present)
+  let cleanedPhone = phone.replace(/\D/g, '');
+  if (!cleanedPhone.startsWith('91') && cleanedPhone.length === 10) {
+    cleanedPhone = '91' + cleanedPhone;
+  }
+
+  let message = '';
+
+  if (isAppointment && typeof appointmentData !== 'undefined') {
+    // Professional appointment confirmation message with all details
+    const formattedDate = formatDate(appointmentData.date);
+    message = `Dear ${name},
 
 *MediCare+ Hospital - Appointment Confirmation*
 
@@ -1487,9 +1972,9 @@ Thank you for choosing MediCare+ for your healthcare needs.
 Best regards,
 MediCare+ Hospital
 `;
-    } else if (isAppointment) {
-      // Generic appointment message if no detailed data is available
-      message = `Dear ${name},
+  } else if (isAppointment) {
+    // Generic appointment message if no detailed data is available
+    message = `Dear ${name},
 
 This is from MediCare+ Hospital regarding your recent appointment booking. 
 
@@ -1500,9 +1985,9 @@ Thank you for choosing MediCare+ for your healthcare needs.
 Best regards,
 MediCare+ Hospital Team
 `;
-    } else {
-      // General contact message
-      message = `Dear ${name},
+  } else {
+    // General contact message
+    message = `Dear ${name},
 
 Thank you for contacting MediCare+ Hospital. 
 
@@ -1511,11 +1996,11 @@ We have received your inquiry and would like to provide you with the information
 Best regards,
 MediCare+ Hospital Team
 `;
-    }
-    
-    const url = `https://wa.me/${cleanedPhone}?text=${encodeURIComponent(message)}`;
-    window.open(url, '_blank');
-  };
+  }
+
+  const url = `https://wa.me/${cleanedPhone}?text=${encodeURIComponent(message)}`;
+  window.open(url, '_blank');
+};
 
   // Phone call handler
   const handlePhoneCall = (phone: string) => {
@@ -1611,7 +2096,7 @@ MediCare+ Hospital Team
     <div className="container mx-auto py-10">
       <div className="flex flex-col md:flex-row md:items-center justify-between mb-8">
         <h1 className="text-3xl font-bold text-foreground">Admin Dashboard</h1>
-        <div className="flex items-center space-x-2 mt-4 md:mt-0">
+        <div className="flex flex-wrap items-center space-x-2 mt-4 md:mt-0">
           <Button
             variant={activeTab === 'overview' ? 'primary' : 'outline'}
             onClick={() => setActiveTab('overview')}
@@ -1631,6 +2116,12 @@ MediCare+ Hospital Team
             Doctors
           </Button>
           <Button
+            variant={activeTab === 'services' ? 'primary' : 'outline'}
+            onClick={() => setActiveTab('services')}
+          >
+            Services
+          </Button>
+          <Button
             variant={activeTab === 'contacts' ? 'primary' : 'outline'}
             onClick={() => setActiveTab('contacts')}
           >
@@ -1648,11 +2139,119 @@ MediCare+ Hospital Team
           {activeTab === 'overview' && renderOverview()}
           {activeTab === 'appointments' && renderAppointments()}
           {activeTab === 'doctors' && renderDoctors()}
-          {activeTab === 'contacts' && renderContacts()}
+          {activeTab === 'services' && renderServices()}
+          {activeTab === 'contacts' && renderContacts(contacts, deleteContact, handleWhatsAppContact, handleEmailContact)}
         </>
       )}
     </div>
   );
 };
+
+// Add this function before export default AdminDashboard
+function renderAppointments() {
+  return (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold text-foreground">Appointments Management</h2>
+      <div className="p-12 text-center bg-muted/30 rounded-xl border border-border">
+        <h3 className="text-xl font-semibold mb-3">Appointments view coming soon</h3>
+        <p className="text-muted-foreground mb-6">
+          The appointments management feature will be available here.
+        </p>
+      </div>
+    </div>
+  );
+}
+
+// Render contacts tab content
+function renderContacts(
+  contacts: any[],
+  deleteContact: (id: string) => void,
+  handleWhatsAppContact: (phone: string, name?: string) => void,
+  handleEmailContact?: (email: string, name?: string, subject?: string) => void
+) {
+  return (
+    <div className="space-y-6">
+      <h2 className="text-2xl font-bold text-foreground">Contacts Management</h2>
+      {contacts.length === 0 ? (
+        <div className="p-12 text-center bg-muted/30 rounded-xl border border-border">
+          <h3 className="text-xl font-semibold mb-3">No contacts found</h3>
+          <p className="text-muted-foreground mb-6">
+            There are no contact inquiries yet.
+          </p>
+        </div>
+      ) : (
+        <Card premium className="overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-muted/50">
+                <tr>
+                  <th className="text-left p-4 font-medium text-foreground">Name</th>
+                  <th className="text-left p-4 font-medium text-foreground">Email</th>
+                  <th className="text-left p-4 font-medium text-foreground">Phone</th>
+                  <th className="text-left p-4 font-medium text-foreground">Message</th>
+                  <th className="text-left p-4 font-medium text-foreground">Date</th>
+                  <th className="text-right p-4 font-medium text-foreground">Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                {contacts.map((contact) => (
+                  <tr key={contact.id} className="border-t border-border hover:bg-muted/10">
+                    <td className="p-4">
+                      <div className="font-medium text-foreground">{contact.name}</div>
+                    </td>
+                    <td className="p-4">
+                      <a href={`mailto:${contact.email}`} className="text-primary hover:underline">
+                        {contact.email}
+                      </a>
+                    </td>
+                    <td className="p-4">
+                      <a href={`tel:${contact.phone}`} className="text-primary hover:underline">
+                        {contact.phone}
+                      </a>
+                    </td>
+                    <td className="p-4">
+                      <span className="text-muted-foreground text-sm line-clamp-2">{contact.message}</span>
+                    </td>
+                    <td className="p-4">
+                      <span className="text-muted-foreground text-xs">{formatDate(contact.createdAt)}</span>
+                    </td>
+                    <td className="p-4 text-right">
+                      <div className="flex justify-end space-x-2">
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-red-500 hover:text-red-600 hover:bg-red-50"
+                          onClick={() => deleteContact(contact.id)}
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-green-500 hover:text-green-600 hover:bg-green-50"
+                          onClick={() => handleWhatsAppContact(contact.phone, contact.name)}
+                        >
+                          <MessageCircle className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-blue-500 hover:text-blue-600 hover:bg-blue-50"
+                          onClick={() => handleEmailContact && handleEmailContact(contact.email, contact.name, contact.subject)}
+                        >
+                          <Mail className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+      )}
+    </div>
+  );
+}
 
 export default AdminDashboard;
