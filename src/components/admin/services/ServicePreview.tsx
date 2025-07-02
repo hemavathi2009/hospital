@@ -4,12 +4,24 @@ import { Calendar, ArrowRight, Clock, CheckCircle } from 'lucide-react';
 import { Service } from '../../../types/service';
 import Card from '../../atoms/Card';
 import Button from '../../atoms/Button';
+import { useNavigate } from 'react-router-dom';
 
 interface ServicePreviewProps {
   service: Service;
 }
 
 const ServicePreview: React.FC<ServicePreviewProps> = ({ service }) => {
+  const navigate = useNavigate();
+
+  const handleBookAppointment = () => {
+    navigate('/appointment-booking', {
+      state: { 
+        serviceId: service.id,
+        serviceName: service.name
+      }
+    });
+  };
+
   return (
     <div className="space-y-8">
       <div className="bg-muted/30 p-4 rounded-lg">
@@ -90,6 +102,7 @@ const ServicePreview: React.FC<ServicePreviewProps> = ({ service }) => {
                 variant="primary" 
                 size="md" 
                 className="w-full"
+                onClick={handleBookAppointment}
               >
                 <Calendar className="w-4 h-4 mr-2" />
                 Book Appointment

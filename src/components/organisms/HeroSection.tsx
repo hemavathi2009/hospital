@@ -15,11 +15,6 @@ const HeroSection: React.FC = () => {
     navigate('/appointment-booking');
   };
 
-  const handleEmergencyCall = () => {
-    console.log('Emergency call...');
-    // Handle emergency call
-  };
-
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
       {/* Background Image */}
@@ -69,10 +64,10 @@ const HeroSection: React.FC = () => {
                 <Calendar className="w-5 h-5 mr-2" />
                 Book Appointment
               </Button>
+
               <Button 
                 variant="outline" 
                 size="xl"
-                onClick={handleEmergencyCall}
                 className="border-white text-white hover:bg-white hover:text-primary shadow-2xl"
               >
                 <Phone className="w-5 h-5 mr-2" />

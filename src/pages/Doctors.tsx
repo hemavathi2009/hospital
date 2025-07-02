@@ -271,20 +271,28 @@ const Doctors = () => {
     document.body.style.overflow = 'auto'; // Restore scrolling
   };
 
-  // Open booking modal
+  // Open booking modal or navigate directly to appointment page
   const handleBookAppointment = (doctor: Doctor) => {
-    setSelectedDoctor(doctor);
-    setShowBookingModal(true);
-    
-    // Set initial booking form data
-    setBookingForm({
-      ...bookingForm,
-      doctor: doctor.name,
-      doctorId: doctor.id,
-      department: doctor.department || doctor.specialty
+    // Option 1: Direct navigation to appointment page with doctor pre-selected
+    navigate('/appointment-booking', {
+      state: {
+        doctorId: doctor.id,
+        doctorName: doctor.name,
+        departmentName: doctor.department || doctor.specialty
+      }
     });
     
-    document.body.style.overflow = 'hidden'; // Prevent background scrolling
+    // Option 2: Show booking modal (current implementation)
+    // setSelectedDoctor(doctor);
+    // setShowBookingModal(true);
+    
+    // // Set initial booking form data
+    // setBookingForm({
+    //   ...bookingForm,
+    //   doctor: doctor.name,
+    //   doctorId: doctor.id,
+    //   department: doctor.department || doctor.specialty
+    // });
   };
 
   // Close booking modal

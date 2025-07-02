@@ -27,7 +27,7 @@ import {
   // Add these new imports for contact buttons
   MessageCircle, PhoneCall, Send, Info, Clock, Grid, List, Edit2, ExternalLink, CheckCircle, Settings,
   // Add these missing icons
-  Zap, UserPlus, CheckSquare, FileText, Bell, Download, User
+  Zap, UserPlus, CheckSquare, FileText, Bell, Download, User, Circle, ArrowRight
 } from 'lucide-react';
 // Import cloudinary utilities
 import { uploadImage } from '../../utils/imageUpload';
@@ -1193,136 +1193,343 @@ const AdminDashboard = () => {
                   <Activity className="w-5 h-5 mr-2 text-primary" />
                   Appointment Analytics
                 </h3>
-                <div className="text-sm text-muted-foreground">
-                  Total: {appointmentStats.total}
+                <div className="flex items-center">
+                  <div className="text-sm text-muted-foreground mr-2">
+                    Total: {appointmentStats.total}
+                  </div>
+                  <div className="flex items-center space-x-1">
+                    <div className="w-3 h-3 rounded-full bg-primary/80"></div>
+                    <span className="text-xs">Today: {todayAppointments.length}</span>
+                  </div>
                 </div>
               </div>
               
-              <div className="grid grid-cols-2 gap-6">
-                {/* Chart */}
-                <div className="h-60">
-                  <div className="flex h-full items-end gap-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Enhanced Chart */}
+                <div className="h-64">
+                  <div className="flex h-full items-end gap-4">
                     <div className="flex-1 flex flex-col justify-end items-center">
-                      <div 
-                        className="w-full bg-primary/80 rounded-t-md" 
-                        style={{ height: `${(appointmentStats.confirmed / Math.max(1, appointmentStats.total)) * 100}%` }}
-                      ></div>
-                      <span className="mt-2 text-xs">Confirmed</span>
-                      <span className="font-medium">{appointmentStats.confirmed}</span>
+                      <div className="w-full flex flex-col items-center">
+                        <div 
+                          className="w-full bg-primary/80 rounded-t-md relative group"
+                          style={{ height: `${(appointmentStats.confirmed / Math.max(1, appointmentStats.total)) * 100}%` }}
+                        >
+                          <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-foreground text-background text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                            {Math.round((appointmentStats.confirmed / Math.max(1, appointmentStats.total)) * 100)}% ({appointmentStats.confirmed})
+                          </div>
+                        </div>
+                        <span className="mt-2 text-xs font-medium">Confirmed</span>
+                        <div className="flex items-center">
+                          <span className="font-bold">{appointmentStats.confirmed}</span>
+                          {appointmentStats.confirmed > 0 && (
+                            <span className="text-xs text-success ml-1">
+                              ({Math.round((appointmentStats.confirmed / Math.max(1, appointmentStats.total)) * 100)}%)
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
                     <div className="flex-1 flex flex-col justify-end items-center">
-                      <div 
-                        className="w-full bg-yellow-500/80 rounded-t-md" 
-                        style={{ height: `${(appointmentStats.pending / Math.max(1, appointmentStats.total)) * 100}%` }}
-                      ></div>
-                      <span className="mt-2 text-xs">Pending</span>
-                      <span className="font-medium">{appointmentStats.pending}</span>
+                      <div className="w-full flex flex-col items-center">
+                        <div 
+                          className="w-full bg-yellow-500/80 rounded-t-md relative group"
+                          style={{ height: `${(appointmentStats.pending / Math.max(1, appointmentStats.total)) * 100}%` }}
+                        >
+                          <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-foreground text-background text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                            {Math.round((appointmentStats.pending / Math.max(1, appointmentStats.total)) * 100)}% ({appointmentStats.pending})
+                          </div>
+                        </div>
+                        <span className="mt-2 text-xs font-medium">Pending</span>
+                        <div className="flex items-center">
+                          <span className="font-bold">{appointmentStats.pending}</span>
+                          {appointmentStats.pending > 0 && (
+                            <span className="text-xs text-amber-500 ml-1">
+                              ({Math.round((appointmentStats.pending / Math.max(1, appointmentStats.total)) * 100)}%)
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
                     <div className="flex-1 flex flex-col justify-end items-center">
-                      <div 
-                        className="w-full bg-red-500/80 rounded-t-md" 
-                        style={{ height: `${(appointmentStats.cancelled / Math.max(1, appointmentStats.total)) * 100}%` }}
-                      ></div>
-                      <span className="mt-2 text-xs">Cancelled</span>
-                      <span className="font-medium">{appointmentStats.cancelled}</span>
+                      <div className="w-full flex flex-col items-center">
+                        <div 
+                          className="w-full bg-red-500/80 rounded-t-md relative group"
+                          style={{ height: `${(appointmentStats.cancelled / Math.max(1, appointmentStats.total)) * 100}%` }}
+                        >
+                          <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-foreground text-background text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                            {Math.round((appointmentStats.cancelled / Math.max(1, appointmentStats.total)) * 100)}% ({appointmentStats.cancelled})
+                          </div>
+                        </div>
+                        <span className="mt-2 text-xs font-medium">Cancelled</span>
+                        <div className="flex items-center">
+                          <span className="font-bold">{appointmentStats.cancelled}</span>
+                          {appointmentStats.cancelled > 0 && (
+                            <span className="text-xs text-red-500 ml-1">
+                              ({Math.round((appointmentStats.cancelled / Math.max(1, appointmentStats.total)) * 100)}%)
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
                     <div className="flex-1 flex flex-col justify-end items-center">
-                      <div 
-                        className="w-full bg-blue-500/80 rounded-t-md" 
-                        style={{ height: `${(appointmentStats.completed / Math.max(1, appointmentStats.total)) * 100}%` }}
-                      ></div>
-                      <span className="mt-2 text-xs">Completed</span>
-                      <span className="font-medium">{appointmentStats.completed}</span>
+                      <div className="w-full flex flex-col items-center">
+                        <div 
+                          className="w-full bg-blue-500/80 rounded-t-md relative group"
+                          style={{ height: `${(appointmentStats.completed / Math.max(1, appointmentStats.total)) * 100}%` }}
+                        >
+                          <div className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-foreground text-background text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">
+                            {Math.round((appointmentStats.completed / Math.max(1, appointmentStats.total)) * 100)}% ({appointmentStats.completed})
+                          </div>
+                        </div>
+                        <span className="mt-2 text-xs font-medium">Completed</span>
+                        <div className="flex items-center">
+                          <span className="font-bold">{appointmentStats.completed}</span>
+                          {appointmentStats.completed > 0 && (
+                            <span className="text-xs text-blue-500 ml-1">
+                              ({Math.round((appointmentStats.completed / Math.max(1, appointmentStats.total)) * 100)}%)
+                            </span>
+                          )}
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
                 
-                {/* Weekly distribution */}
                 <div className="space-y-4">
-                  <h4 className="text-sm font-medium text-foreground">This Week's Distribution</h4>
+                  {/* Department distribution and weekly heatmap combined */}
+                  <div>
+                    <h4 className="text-sm font-medium text-foreground mb-2 flex items-center">
+                      <Calendar className="w-4 h-4 mr-1 text-primary" />
+                      This Week's Distribution
+                    </h4>
+                    
+                    {/* Weekly heatmap - improved with tooltips */}
+                    <div className="flex space-x-1 justify-between">
+                      {Array.from({ length: 7 }).map((_, index) => {
+                        // Calculate date for this weekday
+                        const date = new Date();
+                        date.setDate(date.getDate() - date.getDay() + index);
+                        const dateStr = date.toISOString().split('T')[0];
+                        
+                        // Count appointments for this day
+                        const count = appointments.filter(apt => {
+                          if (!apt.date) return false;
+                          const aptDate = apt.date.seconds 
+                            ? new Date(apt.date.seconds * 1000).toISOString().split('T')[0]
+                            : new Date(apt.date).toISOString().split('T')[0];
+                          return aptDate === dateStr;
+                        }).length;
+                        
+                        // Calculate intensity for heatmap (0-4)
+                        const max = Math.max(
+                          5,
+                          ...Object.values(
+                            appointments
+                              .map(a => {
+                                if (!a.date) return null;
+                                const aptDate = a.date.seconds
+                                  ? new Date(a.date.seconds * 1000).toISOString().split('T')[0]
+                                  : new Date(a.date).toISOString().split('T')[0];
+                                return aptDate;
+                              })
+                              .filter((date): date is string => !!date)
+                              .reduce((acc, date) => {
+                                acc[date] = (acc[date] || 0) + 1;
+                                return acc;
+                              }, {} as Record<string, number>)
+                          )
+                        );
+                        
+                        const intensity = Math.min(4, Math.ceil((count / max) * 4));
+                        const today = new Date().toISOString().split('T')[0] === dateStr;
+                        
+                        const dayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+                        
+                        return (
+                          <div key={index} className="flex flex-col items-center group relative">
+                            <div className="text-xs text-muted-foreground mb-1">
+                              {dayLabels[index]}
+                            </div>
+                            <div 
+                              className={`w-8 h-8 rounded flex items-center justify-center text-xs ${
+                                today ? 'bg-primary text-white ring-2 ring-offset-2 ring-primary/30' : 
+                                intensity === 0 ? 'bg-muted/30 text-muted-foreground' :
+                                intensity === 1 ? 'bg-blue-100 text-blue-800' :
+                                intensity === 2 ? 'bg-blue-200 text-blue-800' :
+                                intensity === 3 ? 'bg-blue-300 text-blue-800' :
+                                'bg-blue-400 text-white'
+                              }`}
+                            >
+                              {date.getDate()}
+                              <span className="absolute -top-8 left-1/2 transform -translate-x-1/2 bg-foreground text-background text-xs px-2 py-1 rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-10">
+                                {count} appointment{count !== 1 ? 's' : ''} on {date.toLocaleDateString()}
+                              </span>
+                            </div>
+                            <div className="text-xs mt-1 font-medium">
+                              {count > 0 ? count : '-'}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
                   
-                  {/* Weekly heatmap */}
-                  <div className="flex space-x-1 justify-between">
-                    {Array.from({ length: 7 }).map((_, index) => {
-                      // Calculate date for this weekday
-                      const date = new Date();
-                      date.setDate(date.getDate() - date.getDay() + index);
-                      const dateStr = date.toISOString().split('T')[0];
-                      
-                      // Count appointments for this day
-                      const count = appointments.filter(apt => {
-                        if (!apt.date) return false;
-                        const aptDate = apt.date.seconds 
-                          ? new Date(apt.date.seconds * 1000).toISOString().split('T')[0]
-                          : new Date(apt.date).toISOString().split('T')[0];
-                        return aptDate === dateStr;
-                      }).length;
-                      
-                      // Calculate intensity for heatmap (0-4)
-                      const max = Math.max(
-                        5,
-                        ...Object.values(
-                          appointments
-                            .map(a => {
-                              if (!a.date) return null;
-                              const aptDate = a.date.seconds
-                                ? new Date(a.date.seconds * 1000).toISOString().split('T')[0]
-                                : new Date(a.date).toISOString().split('T')[0];
-                              return aptDate;
-                            })
-                            .filter((date): date is string => !!date)
-                            .reduce((acc, date) => {
-                              acc[date] = (acc[date] || 0) + 1;
-                              return acc;
-                            }, {} as Record<string, number>)
-                        )
-                      );
-                      
-                      const intensity = Math.min(4, Math.ceil((count / max) * 4));
-                      const today = new Date().toISOString().split('T')[0] === dateStr;
-                      
-                      const dayLabels = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
-                      
-                      return (
-                        <div key={index} className="flex flex-col items-center">
-                          <div className="text-xs text-muted-foreground mb-1">
-                            {dayLabels[index]}
+                  {/* Top departments */}
+                  <div className="mt-6">
+                    <h4 className="text-sm font-medium text-foreground mb-2 flex items-center">
+                      <Building className="w-4 h-4 mr-1 text-primary" />
+                      Top Departments
+                    </h4>
+                    
+                    {Object.entries(
+                      appointments.reduce((acc, apt) => {
+                        const dept = apt.departmentName || 'General';
+                        acc[dept] = (acc[dept] || 0) + 1;
+                        return acc;
+                      }, {} as Record<string, number>)
+                    )
+                      .sort(([, a], [, b]) => Number(b) - Number(a))
+                      .slice(0, 3)
+                      .map(([dept, count], index) => (
+                        <div key={dept} className="mb-2">
+                          <div className="flex justify-between mb-1">
+                            <div className="flex items-center">
+                              <div className={`w-2 h-2 rounded-full mr-1.5 ${
+                                index === 0 ? 'bg-primary' : 
+                                index === 1 ? 'bg-blue-500' : 
+                                'bg-purple-500'
+                              }`}></div>
+                              <span className="text-sm font-medium">{dept}</span>
+                            </div>
+                            <span className="text-xs text-muted-foreground">{Number(count)} appts.</span>
                           </div>
-                          <div 
-                            className={`w-8 h-8 rounded flex items-center justify-center text-xs ${
-                              today ? 'bg-primary text-white' : 
-                              intensity === 0 ? 'bg-muted/30 text-muted-foreground' :
-                              intensity === 1 ? 'bg-blue-100 text-blue-800' :
-                              intensity === 2 ? 'bg-blue-200 text-blue-800' :
-                              intensity === 3 ? 'bg-blue-300 text-blue-800' :
-                              'bg-blue-400 text-white'
-                            }`}
-                            title={`${count} appointments on ${date.toLocaleDateString()}`}
-                          >
-                            {date.getDate()}
-                          </div>
-                          <div className="text-xs mt-1">
-                            {count > 0 ? count : '-'}
+                          <div className="w-full h-1.5 bg-muted/50 rounded-full overflow-hidden">
+                            <div 
+                              className={`h-full rounded-full ${
+                                index === 0 ? 'bg-primary' : 
+                                index === 1 ? 'bg-blue-500' : 
+                                'bg-purple-500'
+                              }`}
+                              style={{ width: `${(Number(count) / Number(appointmentStats.total)) * 100}%` }}
+                            ></div>
                           </div>
                         </div>
+                      ))
+                    }
+                    
+                    {/* Time distribution */}
+                    <h4 className="text-sm font-medium text-foreground mt-5 mb-2 flex items-center">
+                      <Clock className="w-4 h-4 mr-1 text-primary" />
+                      Time Distribution
+                    </h4>
+                    
+                    {/* Calculate actual time distribution from appointments */}
+                    {(() => {
+                      const timeSlots = {
+                        morning: { count: 0, label: 'Morning', color: 'bg-blue-500' },
+                        afternoon: { count: 0, label: 'Afternoon', color: 'bg-amber-500' },
+                        evening: { count: 0, label: 'Evening', color: 'bg-purple-500' }
+                      };
+                      
+                      appointments.forEach(apt => {
+                        if (!apt.time) return;
+                        
+                        const hour = parseInt(apt.time.split(':')[0]);
+                        
+                        if (hour < 12) timeSlots.morning.count++;
+                        else if (hour < 17) timeSlots.afternoon.count++;
+                        else timeSlots.evening.count++;
+                      });
+                      
+                      const total = Object.values(timeSlots).reduce((sum, { count }) => sum + count, 0);
+                      
+                      return (
+                        <>
+                          <div className="w-full h-2 bg-muted/30 rounded-full overflow-hidden flex">
+                            {Object.values(timeSlots).map((slot, idx) => (
+                              <div 
+                                key={idx} 
+                                className={`h-full ${slot.color}`} 
+                                style={{ width: `${total ? (slot.count / total) * 100 : 0}%` }}
+                              ></div>
+                            ))}
+                          </div>
+                          <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                            {Object.values(timeSlots).map((slot, idx) => (
+                              <span key={idx}>{slot.label} ({total ? Math.round((slot.count / total) * 100) : 0}%)</span>
+                            ))}
+                          </div>
+                        </>
                       );
-                    })}
-                  </div>
-                  
-                  {/* Distribution by time of day */}
-                  <div className="mt-4">
-                    <h4 className="text-sm font-medium text-foreground mb-2">Time Distribution</h4>
-                    <div className="w-full bg-muted/30 h-2 rounded-full overflow-hidden">
-                      <div className="bg-blue-500 h-full rounded-full" style={{ width: '35%' }}></div>
-                    </div>
-                    <div className="flex justify-between text-xs text-muted-foreground mt-1">
-                      <span>Morning (35%)</span>
-                      <span>Afternoon (45%)</span>
-                      <span>Evening (20%)</span>
-                    </div>
+                    })()}
                   </div>
                 </div>
+                
+                {/* Actionable insights */}
+                <div className="mt-6 p-3 bg-primary/5 border border-primary/10 rounded-lg">
+                  <h4 className="text-sm font-medium text-foreground mb-2 flex items-center">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" className="w-4 h-4 mr-1 text-primary">
+                      <path fillRule="evenodd" d="M10.362 1.093a.75.75 0 00-.724 0L2.523 5.018 10 9.143l7.477-4.125-7.115-3.925zM18 6.443l-7.25 4v8.25l6.862-3.786A.75.75 0 0018 14.25V6.443zm-8.75 12.25v-8.25l-7.25-4v7.807a.75.75 0 00.388.657l6.862 3.786z" clipRule="evenodd" />
+                    </svg>
+                    Insights & Recommendations
+                  </h4>
+                  <ul className="text-xs space-y-1.5">
+                    {appointmentStats.pending > 5 && (
+                      <li className="flex items-start">
+                        <div className="text-amber-500 mr-1.5 mt-0.5"><Circle className="w-2 h-2 fill-current" /></div>
+                        <span>You have {appointmentStats.pending} pending appointments that require confirmation</span>
+                      </li>
+                    )}
+                    {todayAppointments.length > 0 && (
+                      <li className="flex items-start">
+                        <div className="text-primary mr-1.5 mt-0.5"><Circle className="w-2 h-2 fill-current" /></div>
+                        <span>Today's schedule has {todayAppointments.length} appointments</span>
+                      </li>
+                    )}
+                    {(() => {
+                      const cancellationRate = appointmentStats.total > 0 
+                        ? (appointmentStats.cancelled / appointmentStats.total) * 100
+                        : 0;
+                        
+                      if (cancellationRate > 15) {
+                        return (
+                          <li className="flex items-start">
+                            <div className="text-red-500 mr-1.5 mt-0.5"><Circle className="w-2 h-2 fill-current" /></div>
+                            <span>High cancellation rate ({Math.round(cancellationRate)}%) - Consider implementing appointment reminders</span>
+                          </li>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </ul>
+                </div>
               </div>
+              
+              <div className="p-3 bg-muted/10 border-t border-border flex justify-between items-center">
+                <span className="text-xs text-muted-foreground">Last updated: just now</span>
+                <Button 
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setActiveTab('appointments')}
+                  className="text-primary"
+                >
+                  View Detailed Reports
+                  <ArrowRight className="w-3 h-3 ml-1" />
+                </Button>
+              </div>
+            </div>
+            
+            <div className="p-3 bg-muted/10 border-t border-border flex justify-between items-center">
+              <span className="text-xs text-muted-foreground">Last updated: just now</span>
+              <Button 
+                variant="ghost"
+                size="sm"
+                onClick={() => setActiveTab('appointments')}
+                className="text-primary"
+              >
+                View Detailed Reports
+                <ArrowRight className="w-3 h-3 ml-1" />
+              </Button>
             </div>
           </motion.div>
 
@@ -2377,7 +2584,7 @@ function renderAppointments(
             variant="outline" 
             size="sm"
             onClick={() => setAppointmentFilter('past')}
-            className="bg-amber-50 text-amber-700 hover:bg-amber-100 border-amber-200"
+            className="bg-amber-50 text-amber-700 hover:bg-amber-200 border-amber-200"
           >
             <Clock className="w-4 h-4 mr-2" />
             Past ({statusCounts.past})
@@ -2456,7 +2663,7 @@ function renderAppointments(
                 </tr>
               </thead>
               <tbody>
-                {filteredAppointments.map((appointment) => (
+                {filteredAppointments.map(appointment => (
                   <React.Fragment key={appointment.id}>
                     <tr 
                       className={`border-t border-border hover:bg-muted/10 ${

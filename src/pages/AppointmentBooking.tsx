@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { addDoc, collection, query, getDocs, where } from 'firebase/firestore';
+import { useNavigate, useLocation } from 'react-router-dom';
+import { addDoc, collection, query, getDocs, where, doc, getDoc } from 'firebase/firestore';
 import { toast } from 'sonner';
 import { motion } from 'framer-motion';
 
@@ -73,6 +73,16 @@ const AppointmentBooking: React.FC = () => {
   const [appointmentConfirmation, setAppointmentConfirmation] = useState<{id: string, data: AppointmentData} | null>(null);
   
   const navigate = useNavigate();
+  const location = useLocation();
+  
+  const locationState = location.state as {
+    departmentId?: string;
+    departmentName?: string;
+    doctorId?: string;
+    doctorName?: string;
+    serviceId?: string;
+    serviceName?: string;
+  } | null;
   
   // State for departments fetched from doctors collection
   const [departments, setDepartments] = useState<Array<{ id: string, name: string, description: string }>>([]);
@@ -199,6 +209,147 @@ const AppointmentBooking: React.FC = () => {
     }
   }, [appointmentData.department, departments, doctors]);
   
+  
+  // Handle doctor selection
+  // (Removed duplicate handleDoctorSelect to fix redeclaration error)
+  
+  // Handle date and time selection
+  // (Removed duplicate handleDateTimeSelect to fix redeclaration error)
+  
+  // Handle form submission for personal info
+  // (Removed duplicate handlePersonalInfoSubmit to fix redeclaration error)
+  
+  // Handle payment completion
+  // (Removed duplicate handlePaymentComplete to fix redeclaration error)
+  
+  // Handle final submission
+  // (Removed duplicate handleFinalSubmit to fix redeclaration error)
+  
+  // Handle booking another appointment
+  // (Removed duplicate handleBookAnother to fix redeclaration error)
+  
+  // Handle navigation back
+  // (Removed duplicate handleBack to fix redeclaration error)
+  
+  // Use pre-selected options if available from navigation
+  useEffect(() => {
+    if (locationState) {
+      // Handle pre-selected department
+      if (locationState.departmentId && locationState.departmentName) {
+        setAppointmentData(prev => ({
+          ...prev,
+          department: locationState.departmentId,
+          departmentName: locationState.departmentName
+        }));
+        
+        // If we have a department, move to doctor selection step
+        if (currentStep === 1) setCurrentStep(2);
+      }
+      
+      // Handle pre-selected doctor
+      if (locationState.doctorId && locationState.doctorName) {
+        setAppointmentData(prev => ({
+          ...prev,
+          doctor: locationState.doctorId,
+          doctorName: locationState.doctorName
+        }));
+        
+        // If we have a doctor and we're at step 1 or 2, move to date/time step
+        if (currentStep <= 2) setCurrentStep(3);
+        
+        // Fetch doctor info to get department if missing
+        const fetchDoctorInfo = async () => {
+          try {
+            const doctorDoc = await getDoc(doc(db, 'doctors', locationState.doctorId!));
+            if (doctorDoc.exists() && !locationState.departmentName) {
+              const doctorData = doctorDoc.data();
+              const department = doctorData.department || doctorData.specialty;
+              
+              if (department) {
+                setAppointmentData(prev => ({
+                  ...prev,
+                  department: department.toLowerCase().replace(/\s+/g, '-'),
+                  departmentName: department
+                }));
+              }
+            }
+          } catch (error) {
+            console.error("Error fetching doctor info:", error);
+          }
+        };
+        
+        if (!locationState.departmentName) fetchDoctorInfo();
+      }
+      
+      // Handle pre-selected service
+      if (locationState.serviceId && locationState.serviceName) {
+        // Find department that offers this service
+        // This would require fetching service details to find associated department
+        const fetchServiceInfo = async () => {
+          try {
+            const serviceDoc = await getDoc(doc(db, 'services', locationState.serviceId!));
+            if (serviceDoc.exists()) {
+              const serviceData = serviceDoc.data();
+              if (serviceData.department || serviceData.category) {
+                const serviceDept = serviceData.department || serviceData.category;
+                setAppointmentData(prev => ({
+                  ...prev,
+                  department: serviceDept.toLowerCase().replace(/\s+/g, '-'),
+                  departmentName: serviceDept,
+                  service: locationState.serviceId,
+                  serviceName: locationState.serviceName
+                }));
+                
+                // Move to step 2 if we're at step 1
+                if (currentStep === 1) setCurrentStep(2);
+              }
+            }
+          } catch (error) {
+            console.error("Error fetching service info:", error);
+          }
+        };
+        
+        fetchServiceInfo();
+      }
+    }
+  }, [location, departments.length]);
+  
+  // Update filtered doctors when department changes and when doctors are loaded
+  useEffect(() => {
+    if (appointmentData.department && doctors.length > 0) {
+      const selectedDepartment = departments.find(dept => dept.id === appointmentData.department);
+      const departmentName = selectedDepartment?.name.toLowerCase() || '';
+      
+      // Filter doctors by matching either department or specialty
+      const filteredDocs = doctors.filter(doctor => {
+        const doctorDept = doctor.department?.toLowerCase() || '';
+        const doctorSpecialty = doctor.specialty?.toLowerCase() || '';
+        
+        return (
+          doctorDept.includes(departmentName) || 
+          departmentName.includes(doctorDept) ||
+          doctorSpecialty.includes(departmentName) || 
+          departmentName.includes(doctorSpecialty)
+        );
+      });
+      
+      // If we have a pre-selected doctor, make sure they're in the filtered list
+      if (appointmentData.doctor) {
+        const selectedDoctorExists = filteredDocs.some(doc => doc.id === appointmentData.doctor);
+        if (!selectedDoctorExists) {
+          const selectedDoctor = doctors.find(doc => doc.id === appointmentData.doctor);
+          if (selectedDoctor) {
+            filteredDocs.push(selectedDoctor);
+          }
+        }
+      }
+      
+      setFilteredDoctors(filteredDocs.length > 0 ? filteredDocs : doctors);
+    } else {
+      setFilteredDoctors(doctors);
+    }
+  }, [appointmentData.department, doctors, appointmentData.doctor]);
+
   // Handle department selection
   const handleDepartmentSelect = (departmentId: string) => {
     const selectedDepartment = departments.find(dept => dept.id === departmentId);

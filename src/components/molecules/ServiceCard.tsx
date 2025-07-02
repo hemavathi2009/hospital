@@ -3,6 +3,7 @@ import { motion } from 'framer-motion';
 import Card from '../atoms/Card';
 import Button from '../atoms/Button';
 import { Calendar, ArrowRight, Clock } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 
 interface ServiceCardProps {
   service: {

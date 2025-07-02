@@ -251,7 +251,12 @@ const Services: React.FC = () => {
 
   // Handle book appointment click
   const handleBookAppointment = (departmentId: string) => {
-    navigate('/appointment-booking', { state: { departmentId, departmentName: departments.find(d => d.id === departmentId)?.name } });
+    navigate('/appointment-booking', { 
+      state: { 
+        departmentId, 
+        departmentName: departments.find(d => d.id === departmentId)?.name 
+      } 
+    });
   };
 
   // Handle book service appointment
