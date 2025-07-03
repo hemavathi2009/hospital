@@ -1,4 +1,3 @@
-
 import { useState, useEffect, createContext, useContext } from 'react';
 import { 
   User,
@@ -6,15 +5,16 @@ import {
   createUserWithEmailAndPassword,
   signOut,
   onAuthStateChanged,
-  updateProfile
+  updateProfile,
+  UserCredential
 } from 'firebase/auth';
 import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../lib/firebase';
 
 interface AuthContextType {
   currentUser: User | null;
-  userRole: 'patient' | 'admin' | null;
-  login: (email: string, password: string) => Promise<void>;
+  userRole: 'patient' | 'admin' | 'doctor' | null;
+  login: (email: string, password: string) => Promise<UserCredential>;
   register: (email: string, password: string, userData: any) => Promise<void>;
   logout: () => Promise<void>;
   loading: boolean;
@@ -32,7 +32,7 @@ export const useAuth = () => {
 
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [userRole, setUserRole] = useState<'patient' | 'admin' | null>(null);
+  const [userRole, setUserRole] = useState<'patient' | 'admin' | 'doctor' | null>(null);
   const [loading, setLoading] = useState(true);
 
   const register = async (email: string, password: string, userData: any) => {
@@ -44,14 +44,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         displayName: `${userData.firstName} ${userData.lastName}`
       });
 
+      // Create user document in Firestore with specific role
+      const role = userData.role || 'patient';
+      
       // Create user document in Firestore
       await setDoc(doc(db, 'users', user.uid), {
         ...userData,
         email,
-        role: 'patient',
+        role,
         createdAt: new Date(),
         updatedAt: new Date()
       });
+      
+      // If registering as a patient, also create entry in patients collection
+      if (role === 'patient') {
+        await setDoc(doc(db, 'patients', user.uid), {
+          firstName: userData.firstName,
+          lastName: userData.lastName,
+          email,
+          phone: userData.phone || '',
+          createdAt: new Date(),
+          updatedAt: new Date()
+        });
+      }
 
       console.log('User registered successfully');
     } catch (error) {
@@ -60,10 +75,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  const login = async (email: string, password: string) => {
+  const login = async (email: string, password: string): Promise<UserCredential> => {
     try {
-      await signInWithEmailAndPassword(auth, email, password);
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      
+      // Immediately fetch the user role after login
+      if (userCredential.user) {
+        const role = await getUserRole(userCredential.user.uid);
+        setUserRole(role as 'patient' | 'admin' | 'doctor' | null);
+      }
+      
       console.log('User logged in successfully');
+      return userCredential;
     } catch (error) {
       console.error('Login error:', error);
       throw error;
@@ -99,8 +122,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setCurrentUser(user);
       
       if (user) {
+        // Get user role from Firestore
         const role = await getUserRole(user.uid);
-        setUserRole(role);
+        setUserRole(role as 'patient' | 'admin' | 'doctor' | null);
       } else {
         setUserRole(null);
       }

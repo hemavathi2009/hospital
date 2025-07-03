@@ -408,9 +408,22 @@ const Doctors = () => {
     visible: {
       opacity: 1,
       transition: {
-        duration: 0.8,
-        ease: "easeOut" as const // Use a valid string easing literal
+        duration: 1.2,
+        ease: "easeOut" as const,
+        staggerChildren: 0.2
       }
+    }
+  };
+  
+  const itemVariantHero = {
+    hidden: { opacity: 0, y: 50 },
+    visible: { 
+      opacity: 1, 
+      y: 0,
+      transition: {
+        duration: 0.8,
+        ease: "easeOut" as const
+      } 
     }
   };
 
@@ -418,56 +431,193 @@ const Doctors = () => {
     <div className="min-h-screen bg-background">
       <Navigation />
       
-      {/* Hero Section */}
+      {/* Hero Section - Enhanced & Enlarged */}
       <motion.section 
         ref={headerRef}
-        className="relative min-h-[60vh] flex items-center justify-center bg-gradient-to-br from-primary/90 via-primary/80 to-secondary overflow-hidden"
+        className="relative min-h-[90vh] flex items-center justify-center overflow-hidden bg-gradient-to-br from-primary/90 via-primary/80 to-secondary"
         initial="hidden"
         animate="visible"
         variants={heroVariants}
       >
-        {/* Abstract background animation */}
-        <div className="absolute inset-0 z-0">
-          <div className="absolute top-0 left-0 w-full h-full">
-            <div className="absolute top-1/4 left-1/4 w-64 h-64 rounded-full bg-accent/20 animate-blob"></div>
-            <div className="absolute top-1/3 right-1/4 w-80 h-80 rounded-full bg-secondary/30 animate-blob animation-delay-2000"></div>
-            <div className="absolute bottom-1/4 right-1/3 w-72 h-72 rounded-full bg-primary-light/30 animate-blob animation-delay-4000"></div>
-          </div>
+        {/* Abstract background elements */}
+        <div className="absolute inset-0 z-0 overflow-hidden">
+          {/* Animated blobs with larger size and more complex animation */}
+          <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] rounded-full bg-accent/10 mix-blend-overlay animate-blob animation-delay-2000"></div>
+          <div className="absolute top-1/2 right-1/4 w-[700px] h-[700px] rounded-full bg-secondary/10 mix-blend-overlay animate-blob"></div>
+          <div className="absolute bottom-1/4 right-1/3 w-[500px] h-[500px] rounded-full bg-primary-light/10 mix-blend-overlay animate-blob animation-delay-4000"></div>
+          <div className="absolute bottom-1/2 left-1/3 w-[300px] h-[300px] rounded-full bg-accent/5 mix-blend-overlay animate-blob animation-delay-3000"></div>
+          
+          {/* Grid overlay with improved pattern */}
+          <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
+          
+          {/* Particle effect overlay */}
+          <div className="absolute inset-0 bg-particle-pattern opacity-10"></div>
         </div>
         
-        <div className="container-hospital text-center relative z-10 px-4">
-          <motion.h1 
-            className="text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-6"
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, ease: "easeOut" }}
-          >
-            Meet Our <span className="text-gradient bg-gradient-to-r from-accent to-white bg-clip-text text-transparent">Expert Doctors</span>
-          </motion.h1>
-          
-          <motion.p 
-            className="text-xl md:text-2xl text-white/90 max-w-3xl mx-auto mb-8"
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.2, ease: "easeOut" }}
-          >
-            Our team of highly qualified physicians brings years of experience and dedication to providing exceptional patient care.
-          </motion.p>
-          
+        {/* Medical icons background */}
+        <div className="absolute inset-0 z-0 overflow-hidden">
+          {Array.from({ length: 10 }).map((_, i) => (
+            <motion.div
+              key={`icon-${i}`}
+              className="absolute opacity-5"
+              initial={{ 
+                x: Math.random() * 100 - 50, 
+                y: Math.random() * 100 - 50,
+                opacity: 0
+              }}
+              animate={{ 
+                x: Math.random() * 100 - 50, 
+                y: Math.random() * 100 - 50,
+                opacity: 0.1,
+                rotate: Math.random() * 360,
+                scale: Math.random() * 0.5 + 0.75
+              }}
+              transition={{
+                duration: Math.random() * 10 + 10,
+                repeat: Infinity,
+                repeatType: "reverse"
+              }}
+              style={{
+                top: `${Math.random() * 100}%`,
+                left: `${Math.random() * 100}%`,
+                fontSize: `${Math.random() * 3 + 2}rem`
+              }}
+            >
+              {[
+                "❤️", "🫀", "🧠", "👨‍⚕️", "👩‍⚕️", "🩺", "💊", "💉", "🩹", "🏥"
+              ][i % 10]}
+            </motion.div>
+          ))}
+        </div>
+        
+        {/* Hero content container with improved layout */}
+        <div className="container-hospital text-center relative z-10 px-4 pt-16 pb-20">
           <motion.div
-            className="absolute bottom-8 left-1/2 transform -translate-x-1/2"
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.7, delay: 0.4, ease: "easeOut", repeat: 3, repeatType: "reverse" }}
+            className="max-w-6xl mx-auto"
+            variants={itemVariantHero}
           >
-            <div className="w-8 h-12 border-2 border-white rounded-full flex items-center justify-center">
-              <div className="w-1 h-3 bg-white rounded-full animate-scroll-down"></div>
-            </div>
+            {/* Enhanced animated badge */}
+            <motion.div 
+              className="inline-flex items-center px-5 py-3 rounded-full bg-white/15 backdrop-blur-lg text-white mb-8 mx-auto shadow-glow"
+              variants={itemVariantHero}
+            >
+              <div className="w-3 h-3 rounded-full bg-accent mr-3 animate-pulse"></div>
+              <span className="text-base font-medium tracking-wide">HEALTHCARE EXCELLENCE</span>
+            </motion.div>
+            
+            {/* Main heading with enhanced animated reveal */}
+            <motion.div
+              variants={itemVariantHero}
+              className="mb-8"
+            >
+              <h1 className="text-6xl md:text-7xl lg:text-8xl font-bold text-white leading-tight tracking-tight">
+                Meet Our <span className="relative inline-block">
+                  <span className="text-gradient bg-gradient-to-r from-accent via-blue-300 to-white bg-clip-text text-transparent">
+                    Expert Doctors
+                  </span>
+                  <svg className="absolute -bottom-3 left-0 w-full" viewBox="0 0 300 12" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M1 5.5C66.5 -1 112 11.5 299.5 5.5" stroke="url(#paint0_linear)" strokeWidth="4" strokeLinecap="round"/>
+                    <defs>
+                      <linearGradient id="paint0_linear" x1="1" y1="6" x2="299.5" y2="6" gradientUnits="userSpaceOnUse">
+                        <stop stopColor="#22D3EE" stopOpacity="0"/>
+                        <stop offset="0.5" stopColor="#22D3EE"/>
+                        <stop offset="1" stopColor="#22D3EE" stopOpacity="0"/>
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                </span>
+              </h1>
+            </motion.div>
+            
+            {/* Enhanced subtitle with 3D effect */}
+            <motion.p 
+              className="text-2xl md:text-3xl text-white/90 max-w-3xl mx-auto mb-12 leading-relaxed font-light text-shadow-glow"
+              variants={itemVariantHero}
+            >
+              Our team of highly qualified physicians brings years of experience 
+              and dedication to providing exceptional patient care across all specialties.
+            </motion.p>
+            
+            {/* Enhanced search bar with glow effect */}
+            <motion.div
+              className="max-w-3xl mx-auto mb-10"
+              variants={itemVariantHero}
+            >
+              <div className="relative">
+                <Input
+                  placeholder="Search by doctor name, specialty or department..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full py-7 px-7 pl-14 bg-white/15 backdrop-blur-xl border-white/20 text-white placeholder:text-white/60 rounded-2xl shadow-glow focus:ring-accent focus:border-accent text-lg"
+                />
+                <Search className="absolute left-5 top-1/2 transform -translate-y-1/2 w-6 h-6 text-white/70" />
+                {searchQuery && (
+                  <button 
+                    className="absolute right-5 top-1/2 transform -translate-y-1/2"
+                    onClick={() => setSearchQuery('')}
+                  >
+                    <X className="w-5 h-5 text-white/70 hover:text-white" />
+                  </button>
+                )}
+              </div>
+            </motion.div>
+            
+            {/* Enhanced quick filters with 3D effect */}
+            <motion.div 
+              className="flex flex-wrap items-center justify-center gap-4 mb-10"
+              variants={itemVariantHero}
+            >
+              {['All', 'Cardiology', 'Neurology', 'Pediatrics', 'Orthopedics', 'Dermatology'].map((category) => (
+                <button
+                  key={category}
+                  className={`px-6 py-3 rounded-full transition-all transform hover:scale-105 ${
+                    selectedSpecialty === (category === 'All' ? 'All Specialties' : category) 
+                    ? 'bg-accent text-white shadow-glow-accent' 
+                    : 'bg-white/15 hover:bg-white/25 text-white backdrop-blur-md'
+                  }`}
+                  onClick={() => setSelectedSpecialty(category === 'All' ? 'All Specialties' : category)}
+                >
+                  <span className="font-medium">{category}</span>
+                </button>
+              ))}
+            </motion.div>
+            
+            {/* Scroll indicator */}
+            <motion.div 
+              className="hidden md:flex flex-col items-center justify-center mt-8"
+              variants={itemVariantHero}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 1.2, duration: 1 }}
+            >
+              <p className="text-white/50 text-sm mb-2">Scroll to explore</p>
+              <div className="w-6 h-10 border-2 border-white/20 rounded-full flex items-center justify-center">
+                <div className="w-2 h-2 bg-white/50 rounded-full animate-scroll-down"></div>
+              </div>
+            </motion.div>
           </motion.div>
         </div>
+        
+        {/* Stats card removed as requested */}
+
+        {/* Enhanced decorative elements */}
+        <div className="absolute top-10 right-10 w-24 h-24 border-4 border-white/10 rounded-full animate-spin-slow"></div>
+        <div className="absolute bottom-20 left-10 w-16 h-16 border-3 border-white/10 rounded-full animate-bounce-slow"></div>
+        <div className="absolute top-1/3 left-10 w-12 h-12 bg-accent/20 rounded-full animate-pulse"></div>
+        <div className="absolute top-1/4 right-1/4 w-6 h-6 bg-white/10 rounded-full"></div>
+        <div className="absolute bottom-1/3 right-1/6 w-8 h-8 border border-white/20 rounded-full"></div>
+        
+        {/* Abstract shapes */}
+        <svg className="absolute top-20 right-[20%] w-64 h-64 text-white/5" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+          <path fill="currentColor" d="M42.8,-57.2C55.6,-48.3,66.2,-35,70.8,-20C75.4,-4.9,73.9,11.9,67.2,26.8C60.5,41.7,48.5,54.5,34.4,61.1C20.3,67.7,4,68,-11.8,65.3C-27.6,62.5,-42.9,56.7,-54.1,46.2C-65.3,35.7,-72.5,20.5,-73.6,4.9C-74.6,-10.7,-69.6,-26.8,-60.4,-39.9C-51.1,-53,-37.6,-63.2,-23.6,-71.4C-9.5,-79.7,5.1,-86.1,19.1,-81.8C33,-77.5,46.4,-62.5,52.3,-55C58.1,-47.4,56.4,-48.5,54.6,-49.5C52.8,-50.5,51,-51.5,47.5,-47.7Z" transform="translate(100 100)" />
+        </svg>
+        
+        <svg className="absolute bottom-10 left-[15%] w-40 h-40 text-white/5 animate-float" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+          <path fill="currentColor" d="M42.8,-57.2C55.6,-48.3,66.2,-35,70.8,-20C75.4,-4.9,73.9,11.9,67.2,26.8C60.5,41.7,48.5,54.5,34.4,61.1C20.3,67.7,4,68,-11.8,65.3C-27.6,62.5,-42.9,56.7,-54.1,46.2C-65.3,35.7,-72.5,20.5,-73.6,4.9C-74.6,-10.7,-69.6,-26.8,-60.4,-39.9C-51.1,-53,-37.6,-63.2,-23.6,-71.4C-9.5,-79.7,5.1,-86.1,19.1,-81.8C33,-77.5,46.4,-62.5,52.3,-55C58.1,-47.4,56.4,-48.5,54.6,-49.5C52.8,-50.5,51,-51.5,47.5,-47.7Z" transform="translate(100 100)" />
+        </svg>
       </motion.section>
       
-      {/* Filters Section */}
+      {/* Filters Section - Keep unchanged */}
       <section ref={filtersRef} className="py-8 bg-background border-b border-border z-20">
         <div className="container-hospital px-4">
           <div className="bg-white rounded-xl shadow-lg p-6 transition-all">
@@ -1367,12 +1517,58 @@ const Doctors = () => {
           }
         }
         
+        @keyframes float {
+          0% {
+            transform: translateY(0px) rotate(0deg);
+          }
+          50% {
+            transform: translateY(-20px) rotate(5deg);
+          }
+          100% {
+            transform: translateY(0px) rotate(0deg);
+          }
+        }
+        
+        @keyframes spin-slow {
+          from {
+            transform: rotate(0deg);
+          }
+          to {
+            transform: rotate(360deg);
+          }
+        }
+        
+        @keyframes bounce-slow {
+          0%, 100% {
+            transform: translateY(0);
+          }
+          50% {
+            transform: translateY(-15px);
+          }
+        }
+        
         .animate-blob {
-          animation: blob 7s infinite alternate;
+          animation: blob 10s infinite alternate;
+        }
+        
+        .animate-float {
+          animation: float 8s ease-in-out infinite;
+        }
+        
+        .animate-spin-slow {
+          animation: spin-slow 15s linear infinite;
+        }
+        
+        .animate-bounce-slow {
+          animation: bounce-slow 5s ease-in-out infinite;
         }
         
         .animation-delay-2000 {
           animation-delay: 2s;
+        }
+        
+        .animation-delay-3000 {
+          animation-delay: 3s;
         }
         
         .animation-delay-4000 {
@@ -1385,6 +1581,18 @@ const Doctors = () => {
         
         .animate-pulse-soft {
           animation: pulse 2s infinite;
+        }
+        
+        .shadow-glow {
+          box-shadow: 0 0 25px rgba(34, 211, 238, 0.15), 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .shadow-glow-accent {
+          box-shadow: 0 0 20px rgba(34, 211, 238, 0.3), 0 5px 15px rgba(0, 0, 0, 0.1);
+        }
+        
+        .text-shadow-glow {
+          text-shadow: 0 0 30px rgba(255, 255, 255, 0.2);
         }
         
         .sticky-filters {
@@ -1415,6 +1623,21 @@ const Doctors = () => {
         
         .scrollbar-thin::-webkit-scrollbar-thumb:hover {
           background: #9ca3af;
+        }
+        
+        .bg-grid-pattern {
+          background-image: linear-gradient(to right, rgba(255,255,255,0.1) 1px, transparent 1px),
+                            linear-gradient(to bottom, rgba(255,255,255,0.1) 1px, transparent 1px);
+          background-size: 30px 30px;
+        }
+        
+        .bg-particle-pattern {
+          background-image: radial-gradient(circle, rgba(255,255,255,0.1) 2px, transparent 2px);
+          background-size: 50px 50px;
+        }
+        
+        .border-3 {
+          border-width: 3px;
         }
       `}</style>
     </div>

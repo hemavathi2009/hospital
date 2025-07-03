@@ -1,13 +1,13 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Navigation from '../components/organisms/Navigation';
 import Card from '../components/atoms/Card';
 import Button from '../components/atoms/Button';
 import Input from '../components/atoms/Input';
-import { Calendar, Clock, User, Phone, Mail, CheckCircle } from 'lucide-react';
+import { Calendar, Clock, User, Phone, Mail, CheckCircle, ArrowRight, Circle, Users } from 'lucide-react';
 import { collection, addDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { toast } from 'sonner';
+import { motion } from 'framer-motion';
 
 const Appointments = () => {
   const [formData, setFormData] = useState({
@@ -106,24 +106,54 @@ const Appointments = () => {
     <div className="min-h-screen bg-background">
       <Navigation />
       
-      {/* Hero Section with Background Image */}
-      <section className="relative section-padding">
-        <div 
-          className="absolute inset-0 bg-cover bg-center"
-          style={{
-            backgroundImage: `linear-gradient(rgba(59, 130, 246, 0.9), rgba(16, 185, 129, 0.9)), url('https://images.unsplash.com/photo-1551190822-a9333d879b1f?w=1920&h=600&fit=crop')`
-          }}
-        ></div>
-        <div className="relative z-10 container-hospital">
-          <div className="text-center fade-in-up text-white">
-            <h1 className="text-5xl lg:text-6xl font-bold mb-6">
-              Book an <span className="text-gradient bg-gradient-to-r from-accent to-white bg-clip-text text-transparent">Appointment</span>
-            </h1>
-            <p className="text-xl opacity-90 max-w-3xl mx-auto leading-relaxed">
-              Schedule your consultation with our expert medical professionals. 
-              We're here to provide you with the best healthcare experience.
-            </p>
-          </div>
+      {/* Enhanced Mega Hero Section with Advanced 3D Design */}
+      <section className="relative min-h-[100vh] flex items-center justify-center overflow-hidden">
+        {/* Multi-layered advanced background with enhanced depth */}
+        <div className="absolute inset-0 w-full h-full">
+          {/* Enhanced multi-layer gradient overlay with improved depth */}
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/95 via-primary/80 to-secondary/90 z-10"></div>
+          <div className="absolute inset-0 bg-black/40 z-[9]"></div>
+          <img
+            src="https://images.unsplash.com/photo-1551190822-a9333d879b1f?w=1920&h=1080&fit=crop&q=80"
+            alt="Medical appointment"
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+          {/* Enhanced texture overlays with improved opacity */}
+          <div className="absolute inset-0 bg-grid-pattern opacity-20 z-[11]"></div>
+          <div className="absolute inset-0 bg-particle-pattern opacity-20 z-[12]"></div>
+          {/* Animated multi-layered gradient radial glow */}
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[90vw] h-[90vh] bg-gradient-radial from-accent/15 to-transparent rounded-full opacity-60 animate-pulse-slow z-[8]"></div>
+          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-[70vw] h-[70vh] bg-gradient-radial from-primary/20 to-transparent rounded-full opacity-50 animate-pulse-slow z-[7]" style={{ animationDelay: '2s' }}></div>
+        </div>
+
+        {/* Decorative elements */}
+        <div className="absolute top-10 right-10 w-40 h-40 border-4 border-white/10 rounded-full animate-spin-slow"></div>
+        <div className="absolute bottom-20 left-10 w-28 h-28 border-3 border-white/15 rounded-full animate-bounce-slow"></div>
+        <div className="absolute top-1/3 left-10 w-24 h-24 bg-accent/20 rounded-full animate-pulse"></div>
+        <div className="absolute bottom-1/3 right-20 w-20 h-20 border-2 border-white/20 rounded-full animate-bounce-slow" style={{ animationDelay: '1.5s' }}></div>
+        <div className="absolute top-1/4 right-1/4 w-16 h-16 bg-white/10 rounded-full animate-pulse-slow" style={{ animationDelay: '2s' }}></div>
+        {/* New decorative elements - floating particles */}
+        <div className="absolute top-1/2 right-1/3 w-3 h-3 bg-white/40 rounded-full animate-float-particle"></div>
+        <div className="absolute top-2/3 left-1/4 w-2 h-2 bg-accent/50 rounded-full animate-float-particle" style={{ animationDelay: '1s' }}></div>
+        <div className="absolute bottom-1/4 right-1/2 w-4 h-4 bg-primary/30 rounded-full animate-float-particle" style={{ animationDelay: '2.5s' }}></div>
+        <div className="absolute top-1/3 right-1/5 w-2 h-2 bg-white/30 rounded-full animate-float-particle" style={{ animationDelay: '3.5s' }}></div>
+
+        {/* Hero Content */}
+        <div className="relative z-20 container-hospital section-padding flex flex-col items-center justify-center text-center">
+          <h1 className="text-5xl md:text-6xl font-bold text-white mb-6 drop-shadow-lg">
+            Book Your Medical Appointment
+          </h1>
+          <p className="text-xl md:text-2xl text-white/90 mb-8 max-w-2xl mx-auto">
+            Schedule your visit with our expert doctors and experience world-class healthcare. Fast, easy, and secure appointment booking for you and your family.
+          </p>
+          <Button 
+            variant="accent" 
+            size="xl" 
+            className="shadow-2xl hover:shadow-3xl mb-4"
+            onClick={() => document.getElementById('appointment-form')?.scrollIntoView({ behavior: 'smooth' })}
+          >
+            Book Appointment Now
+          </Button>
         </div>
       </section>
 

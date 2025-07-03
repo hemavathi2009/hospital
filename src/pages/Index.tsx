@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
-import { motion, useScroll, useTransform } from 'framer-motion';
+import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
 import Navigation from '../components/organisms/Navigation';
 import Button from '../components/atoms/Button';
 import Card from '../components/atoms/Card';
@@ -16,6 +16,7 @@ import {
   Mail,
   Star,
   Users,
+  User,
   Award,
   Shield,
   ChevronDown,
@@ -23,13 +24,18 @@ import {
   FileText,
   Activity,
   Building,
-  CheckCircle
+  CheckCircle, 
+  X,
+  BookOpen,
+  Languages,
+  AlertCircle
 } from 'lucide-react';
 import { collection, query, orderBy, limit, onSnapshot, addDoc } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { toast } from 'sonner';
 import { Carousel, CarouselContent, CarouselItem, CarouselNext, CarouselPrevious } from "../components/ui/carousel";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "../components/ui/accordion";
+import { Badge } from "../components/ui/badge";
 import { TypeAnimation } from 'react-type-animation';
 import Footer from '../components/organisms/Footer';
 
@@ -45,6 +51,9 @@ const Index = () => {
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState('');
   const [currentDay, setCurrentDay] = useState(new Date().getDay());
+  const [selectedDoctor, setSelectedDoctor] = useState(null);
+  const [showDoctorModal, setShowDoctorModal] = useState(false);
+  const [activeTab, setActiveTab] = useState('about');
   
   // Parallax scrolling effect
   const { scrollYProgress } = useScroll();
@@ -232,6 +241,20 @@ const Index = () => {
     ref.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
+  // Handle view doctor profile
+  const handleViewDoctorProfile = (doctor) => {
+    setSelectedDoctor(doctor);
+    setShowDoctorModal(true);
+    setActiveTab('about');
+    document.body.style.overflow = 'hidden'; // Prevent background scrolling
+  };
+
+  // Handle close doctor modal
+  const handleCloseModal = () => {
+    setShowDoctorModal(false);
+    document.body.style.overflow = 'auto'; // Restore scrolling
+  };
+
   return (
     <div className="min-h-screen bg-background overflow-hidden">
       <Navigation />
@@ -251,7 +274,13 @@ const Index = () => {
             playsInline
             className="absolute inset-0 w-full h-full object-cover"
           >
-            <source src="https://res.cloudinary.com/dobktsnix/video/upload/v1624309712/hospital/medical_background.mp4" type="video/mp4" />
+            <source src="https://player.vimeo.com/external/466464198.sd.mp4?s=32f92bfa7dc5c7e0c2c6da0f74fa6c0de03d38f0&profile_id=164&oauth2_token_id=57447761" type="video/mp4" />
+            {/* Fallback for browsers that don't support video */}
+            <img 
+              src="https://images.unsplash.com/photo-1551076805-e1869033e561?w=1920&h=1080&fit=crop" 
+              alt="Medical facility"
+              className="absolute inset-0 w-full h-full object-cover"
+            />
           </video>
         </div>
         
@@ -503,388 +532,95 @@ const Index = () => {
       <section ref={testimonialsRef} className="py-20 bg-gradient-to-br from-background to-muted/20">
         <div className="container-hospital">
           <motion.div 
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            className="text-center mb-12"
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, margin: "-100px" }}
+            transition={{ duration: 0.7 }}
+            className="text-center mb-16"
           >
-            <span className="inline-flex items-center px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-medium mb-4">
-              <Users className="w-4 h-4 mr-2" />
-              Our Medical Professionals
-            </span>
             <h2 className="text-4xl lg:text-5xl font-bold text-foreground mb-6">
-              Meet Our <span className="text-gradient bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">Expert Doctors</span>
+              Meet Our <span className="text-gradient">Expert Doctors</span>
             </h2>
-            <p className="text-lg text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-              Our team of highly skilled physicians combines advanced medical expertise with 
-              personalized, compassionate care to help you achieve optimal health and wellbeing.
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto">
+              Our team of highly qualified medical professionals brings years of experience
+              and dedication to providing exceptional patient care.
             </p>
           </motion.div>
-          
-          {/* Doctor stats */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mb-12">
-            {[
-              {
-                label: 'Board Certified Doctors',
-                value: '40+'
-              },
-              {
-                label: 'Specialties & Subspecialties',
-                value: '20+'
-              },
-              {
-                label: 'Years of Combined Experience',
-                value: '500+'
-              },
-              {
-                label: 'Patient Satisfaction',
-                value: '98%'
-              }
-            ].map((stat, i) => (
-              <div key={i} className="bg-card border border-border p-4 rounded-xl text-center hover:border-primary/30 transition-colors">
-                <div className="text-2xl font-bold text-primary mb-1">{stat.value}</div>
-                <div className="text-sm text-muted-foreground">{stat.label}</div>
-              </div>
-            ))}
-          </div>
-          
-          {/* Interactive specialty filter */}
-          <div className="mb-12">
-            <div className="flex justify-between items-center mb-4">
-              <h3 className="text-lg font-medium">Find doctors by specialty</h3>
-              <Link to="/doctors" className="text-primary text-sm hover:underline flex items-center">
-                View all specialties
-                <ArrowRight className="w-3 h-3 ml-1" />
-              </Link>
-            </div>
-            
-            <div className="flex flex-wrap justify-center gap-3">
-              {["All Specialties", "Cardiology", "Neurology", "Pediatrics", "Orthopedics", "Dermatology"].map((specialty, i) => (
-                <motion.button
-                  key={specialty}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.98 }}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-colors ${
-                    i === 0
-                      ? 'bg-primary text-white shadow-lg shadow-primary/20' 
-                      : 'bg-card border border-border hover:border-primary/50'
-                  }`}
-                >
-                  {specialty}
-                </motion.button>
-              ))}
-            </div>
-          </div>
 
-          {loading ? (
-            <div className="flex flex-col items-center justify-center py-16">
-              <div className="relative w-20 h-20 mb-4">
-                <div className="absolute inset-0 rounded-full border-4 border-primary/30"></div>
-                <div className="absolute inset-0 rounded-full border-4 border-primary border-t-transparent animate-spin"></div>
-              </div>
-              <p className="text-lg font-medium text-foreground">Finding the best doctors for you...</p>
-              <p className="text-muted-foreground">Loading physician profiles</p>
-            </div>
-          ) : (
-            <>
-              {/* Featured doctor - highlight */}
-              {doctors.length > 0 && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  whileInView={{ opacity: 1, y: 0 }}
-                  viewport={{ once: true }}
-                  className="mb-12"
-                >
-                  <Card premium className="overflow-hidden bg-gradient-to-r from-primary/5 to-secondary/5 border-primary/20">
-                    <div className="grid md:grid-cols-2 gap-6 p-6">
-                      <div className="relative overflow-hidden rounded-xl h-72 md:h-auto">
-                        <div className="absolute top-4 left-4 z-10 bg-gradient-to-r from-primary to-secondary text-white px-3 py-1 rounded-md text-sm font-medium shadow-lg">
-                          Featured Physician
-                        </div>
-                        <img 
-                          src={doctors[0].image || 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=500&h=500&fit=crop'}
-                          alt={`Dr. ${doctors[0].name}`}
-                          className="w-full h-full object-cover"
-                        />
-                        <div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent"></div>
-                      </div>
-                      
-                      <div className="flex flex-col justify-center">
-                        <div className="inline-flex items-center px-3 py-1 rounded-md bg-primary/10 text-primary text-sm font-medium mb-2 w-fit">
-                          {doctors[0].specialty || "Specialist"}
-                        </div>
-                        <h3 className="text-2xl font-bold text-foreground mb-2">Dr. {doctors[0].name}</h3>
-                        <p className="text-muted-foreground mb-4">
-                          {doctors[0].bio || `Dr. ${doctors[0].name} is a highly respected ${doctors[0].specialty} specialist with ${doctors[0].experience || '10+ years'} of experience in treating complex conditions with innovative approaches.`}
-                        </p>
-                        
-                        <div className="flex items-center mb-4">
-                          {[...Array(5)].map((_, i) => (
-                            <Star
-                              key={i}
-                              fill={i < Math.floor(doctors[0].rating || 4.8) ? "currentColor" : "none"}
-                              className={`w-4 h-4 ${i < Math.floor(doctors[0].rating || 4.8) ? 'text-yellow-500' : 'text-gray-300'}`}
-                            />
-                          ))}
-                          <span className="ml-2 text-muted-foreground">({doctors[0].rating || '4.8'}/5)</span>
-                          <span className="ml-2 text-xs text-muted-foreground">from patient reviews</span>
-                        </div>
-                        
-                        <div className="grid grid-cols-2 gap-4 mb-6">
-                          <div className="flex items-center">
-                            <Award className="w-4 h-4 text-primary mr-2" />
-                            <span className="text-sm">{doctors[0].experience || "10+ Years"}</span>
-                          </div>
-                          <div className="flex items-center">
-                            <MapPin className="w-4 h-4 text-primary mr-2" />
-                            <span className="text-sm">{doctors[0].location || "Main Hospital"}</span>
-                          </div>
-                        </div>
-                        
-                        <div className="flex items-center gap-3 p-2 bg-success/5 border border-success/10 rounded-md mb-6">
-                          <div className="w-8 h-8 rounded-full bg-success/20 flex items-center justify-center">
-                            <Calendar className="w-4 h-4 text-success" />
-                          </div>
-                          <div className="text-sm">
-                            <p className="font-medium">Next Available Appointment</p>
-                            <p className="text-success">Today at 2:30 PM</p>
-                          </div>
-                        </div>
-                        
-                        <div className="flex gap-3">
-                          <Link to={`/appointment-booking`} state={{ doctorId: doctors[0].id, doctorName: doctors[0].name }}>
-                            <Button variant="primary" className="shadow-md hover:shadow-primary/25">
-                              <Calendar className="w-4 h-4 mr-2" />
-                              Book Appointment
-                            </Button>
-                          </Link>
-                          <Link to={`/doctors/${doctors[0].id}`}>
-                            <Button variant="outline">
-                              View Full Profile
-                              <ArrowRight className="w-3 h-3 ml-2" />
-                            </Button>
-                          </Link>
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
-                </motion.div>
-              )}
-
-              {/* Doctor Cards - Improved Grid Layout */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-                {doctors.slice(1, 7).map((doctor, index) => (
-                  <motion.div
-                    key={doctor.id}
-                    initial={{ opacity: 0, y: 30 }}
-                    whileInView={{ opacity: 1, y: 0 }}
-                    viewport={{ once: true }}
-                    transition={{ delay: index * 0.1 }}
-                    className="group"
-                  >
-                    <Card premium hover className="overflow-hidden h-full flex flex-col transition-all duration-300 group-hover:shadow-xl">
-                      <div className="relative">
-                        {/* Doctor image with overlay */}
-                        <div className="h-56 overflow-hidden">
-                          <img 
-                            src={doctor.image || `https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=300&h=300&fit=crop&crop=face`}
-                            alt={`Dr. ${doctor.name}`}
-                            className="w-full h-full object-cover transition-all duration-500 group-hover:scale-105"
-                          />
-                          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/40 to-transparent"></div>
-                        </div>
-                        
-                        {/* Availability indicator */}
-                        <div className="absolute top-4 right-4 flex items-center gap-2">
-                          <div className="flex items-center gap-1 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-full shadow-md">
-                            <div className="w-2 h-2 bg-success rounded-full animate-pulse"></div>
-                            <span className="text-xs font-medium">Available Today</span>
-                          </div>
-                        </div>
-                        
-                        {/* Bottom overlay content */}
-                        <div className="absolute bottom-0 left-0 w-full p-4">
-                          <span className="inline-block px-2 py-1 bg-primary/90 text-white text-xs font-medium rounded-md backdrop-blur-sm mb-1 shadow-md">
-                            {doctor.specialty || "Specialist"}
-                          </span>
-                          <h3 className="text-lg font-bold text-white">Dr. {doctor.name}</h3>
-                        </div>
-                      </div>
-                      
-                      <div className="p-5 flex-grow flex flex-col">
-                        {/* Information section */}
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center">
-                            {[...Array(5)].map((_, i) => (
-                              <Star
-                                key={i}
-                                fill={i < Math.floor(doctor.rating || 4.5) ? "currentColor" : "none"}
-                                className={`w-3 h-3 ${i < Math.floor(doctor.rating || 4.5) ? 'text-yellow-500' : 'text-gray-300'}`}
-                              />
-                            ))}
-                            <span className="ml-1 text-xs text-muted-foreground">{doctor.rating || '4.5'}</span>
-                          </div>
-                          <span className="text-xs text-primary font-medium">{doctor.experience || '10+ years'}</span>
-                        </div>
-                        
-                        <div className="space-y-3 mb-4">
-                          <div className="flex items-center text-sm">
-                            <MapPin className="w-4 h-4 text-primary mr-2" />
-                            <span className="text-muted-foreground">{doctor.location || 'Main Hospital'}</span>
-                          </div>
-                          
-                          {doctor.department && (
-                            <div className="flex items-center text-sm">
-                              <Building className="w-4 h-4 text-primary mr-2" />
-                              <span className="text-muted-foreground">{doctor.department}</span>
-                            </div>
-                          )}
-                        </div>
-                        
-                        {/* Languages and specializations */}
-                        <div className="flex flex-wrap gap-2 mb-5">
-                          {(doctor.languages || ['English']).slice(0, 2).map((lang, idx) => (
-                            <span key={idx} className="text-xs px-2 py-1 bg-muted rounded-full">
-                              {lang}
-                            </span>
-                          ))}
-                          
-                          {doctor.department && doctor.department !== doctor.specialty && (
-                            <span className="text-xs px-2 py-1 bg-primary/10 text-primary rounded-full">
-                              {doctor.department}
-                            </span>
-                          )}
-                        </div>
-                        
-                        {/* Next available slot with visual indicator */}
-                        <div className="mb-5 flex items-center p-2 bg-muted/30 rounded-md">
-                          <Calendar className="w-4 h-4 text-primary mr-2" />
-                          <div className="flex justify-between items-center w-full">
-                            <span className="text-xs">Next available:</span>
-                            <span className="text-xs font-medium">Today, 3:30 PM</span>
-                          </div>
-                        </div>
-                        
-                        {/* Actions */}
-                        <div className="mt-auto grid grid-cols-2 gap-2">
-                          <Link to={`/appointment-booking`} state={{ doctorId: doctor.id, doctorName: doctor.name }}>
-                            <Button 
-                              variant="primary" 
-                              size="sm" 
-                              className="w-full"
-                            >
-                              Book Now
-                            </Button>
-                          </Link>
-                          <Link to={`/doctors/${doctor.id}`}>
-                            <Button 
-                              variant="outline" 
-                              size="sm" 
-                              className="w-full"
-                            >
-                              Profile
-                            </Button>
-                          </Link>
-                        </div>
-                      </div>
-                    </Card>
-                  </motion.div>
-                ))}
-              </div>
-            </>
-          )}
-          
-          <div className="text-center mt-14">
-            <p className="text-muted-foreground mb-5">
-              Discover more healthcare professionals across various specialties
-            </p>
-            <Link to="/doctors">
-              <Button 
-                variant="primary" 
-                size="lg" 
-                className="shadow-lg hover:shadow-xl hover:shadow-primary/20 transition-all"
+          <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {doctors.slice(0, 6).map((doctor, index) => (
+              <motion.div
+                key={doctor.id}
+                initial={{ opacity: 0, y: 50 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true, margin: "-50px" }}
+                transition={{ duration: 0.5, delay: index * 0.1 }}
               >
-                <Users className="w-5 h-5 mr-2" />
-                Meet All Our Specialists
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </section>
-      
-      {/* Working Hours Section */}
-      <section className="py-16 bg-background">
-        <div className="container-hospital px-4">
-          <div className="text-center mb-12">
-            <h2 className="text-3xl md:text-4xl font-bold text-foreground mb-4">Hospital Hours</h2>
-            <p className="text-muted-foreground max-w-2xl mx-auto">
-              We're here when you need us, with extended hours and emergency services available.
-            </p>
-          </div>
-
-          <div className="max-w-3xl mx-auto">
-            <div className="bg-card border border-border rounded-xl shadow-card overflow-hidden">
-              <div className="p-6 bg-gradient-to-br from-primary/5 to-secondary/5 border-b border-border">
-                <h3 className="text-xl font-bold text-foreground flex items-center">
-                  <Clock className="w-5 h-5 mr-2 text-primary" />
-                  Operating Hours
-                </h3>
-              </div>
-
-              <div className="divide-y divide-border">
-                {workingHours.map((item, index) => (
-                  <div key={index} className="flex items-center justify-between p-4 hover:bg-muted/10 transition-colors">
-                    <div className="flex items-center">
-                      <div className={`w-10 h-10 rounded-full flex items-center justify-center mr-3 ${
-                        item.isOpen 
-                          ? 'bg-green-50 text-green-600' 
-                          : 'bg-amber-50 text-amber-600'
-                      }`}>
-                        {item.isOpen ? (
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
-                          </svg>
-                        ) : (
-                          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5" viewBox="0 0 20 20" fill="currentColor">
-                            <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                        </svg>
-                        )}
+                <Card premium hover className="h-full overflow-hidden">
+                  <div className="aspect-square overflow-hidden">
+                    {doctor.image ? (
+                      <img 
+                        src={doctor.image} 
+                        alt={`Dr. ${doctor.name}`}
+                        className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-gradient-to-br from-primary/20 to-secondary/20 flex items-center justify-center">
+                        <User className="w-16 h-16 text-primary/50" />
                       </div>
-                      <div>
-                        <p className="font-medium text-foreground">{item.day}</p>
-                        {item.isLimited && (
-                          <span className="text-xs px-2 py-0.5 bg-amber-100 text-amber-800 rounded-full">Limited Services</span>
-                        )}
+                    )}
+                    
+                    {/* Verified badge */}
+                    {doctor.verified && (
+                      <div className="absolute top-4 right-4 bg-white/90 backdrop-blur-sm rounded-full p-1">
+                        <CheckCircle className="w-5 h-5 text-primary" />
                       </div>
-                    </div>
-                    <div>
-                      <span className={`font-medium ${
-                        item.isOpen ? 'text-foreground' : 'text-muted-foreground'
-                      }`}>
-                        {item.hours}
+                    )}
+                  </div>
+                  
+                  <div className="p-6">
+                    <h3 className="text-xl font-semibold text-foreground mb-1">Dr. {doctor.name}</h3>
+                    <p className="text-primary">{doctor.specialty}</p>
+                    
+                    <div className="flex items-center mt-2 mb-3">
+                      {[...Array(5)].map((_, i) => (
+                        <Star
+                          key={i}
+                          className={`w-4 h-4 ${i < Math.floor(doctor.rating || 4.5) ? 'text-yellow-400 fill-current' : 'text-gray-300'}`}
+                        />
+                      ))}
+                      <span className="ml-1 text-sm text-muted-foreground">
+                        ({doctor.rating || '4.5'})
                       </span>
                     </div>
+                    
+                    <div className="mt-4 pt-4 border-t border-border flex justify-between">
+                      <Link to={`/appointment-booking`} state={{ doctorId: doctor.id, doctorName: doctor.name }}>
+                        <Button variant="primary" size="sm">
+                          <Calendar className="w-4 h-4 mr-1" />
+                          Book Now
+                        </Button>
+                      </Link>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        onClick={() => handleViewDoctorProfile(doctor)}
+                      >
+                        View Full Profile
+                      </Button>
+                    </div>
                   </div>
-                ))}
-              </div>
+                </Card>
+              </motion.div>
+            ))}
+          </div>
 
-              <div className="p-4 bg-red-50 border-t border-red-100">
-                <div className="flex items-center">
-                  <div className="w-10 h-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center mr-3">
-                    <Phone className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <p className="font-medium text-foreground">Emergency Services</p>
-                    <p className="text-sm text-muted-foreground">Available 24/7, including holidays</p>
-                  </div>
-                  <div className="ml-auto">
-                    <Button variant="primary" size="sm" onClick={() => window.location.href = '/contact'}>
-                      Contact Us
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            </div>
+          <div className="mt-12 text-center">
+            <Link to="/doctors">
+              <Button variant="secondary" size="lg">
+                View All Doctors
+              </Button>
+            </Link>
           </div>
         </div>
       </section>
@@ -1123,6 +859,536 @@ const Index = () => {
         </div>
       </section>
       
+      {/* Portal Access Section */}
+      <section className="py-20 bg-gradient-to-br from-primary/5 via-white to-secondary/5">
+        <div className="container-hospital">
+          <motion.div 
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            className="text-center mb-16"
+          >
+            <h2 className="text-4xl lg:text-5xl font-bold text-foreground mb-6">
+              Access Your <span className="text-gradient">Health Portal</span>
+            </h2>
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
+              Seamlessly manage your healthcare journey with our dedicated portals for patients and healthcare professionals.
+            </p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+            {/* Patient Portal Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 }}
+            >
+              <Card premium hover className="h-full flex flex-col">
+                <div className="p-8 flex-1">
+                  <div className="w-16 h-16 rounded-2xl bg-blue-100 flex items-center justify-center mb-6">
+                    <User className="w-8 h-8 text-primary" />
+                  </div>
+                  <h3 className="text-2xl font-bold mb-4">Patient Portal</h3>
+                  <p className="text-muted-foreground mb-6">
+                    Access your medical records, upcoming appointments, prescriptions, and lab results. Manage your healthcare journey from anywhere, anytime.
+                  </p>
+                  <ul className="space-y-3 mb-8">
+                    <li className="flex items-start">
+                      <CheckCircle className="w-5 h-5 text-primary mr-2 mt-0.5 flex-shrink-0" />
+                      <span>View and manage your appointments</span>
+                    </li>
+                    <li className="flex items-start">
+                      <CheckCircle className="w-5 h-5 text-primary mr-2 mt-0.5 flex-shrink-0" />
+                      <span>Access your medical records and prescriptions</span>
+                    </li>
+                    <li className="flex items-start">
+                      <CheckCircle className="w-5 h-5 text-primary mr-2 mt-0.5 flex-shrink-0" />
+                      <span>Track your health metrics and progress</span>
+                    </li>
+                  </ul>
+                </div>
+                <div className="p-8 pt-0 mt-auto">
+                  <Link to="/patient-portal">
+                    <Button variant="primary" size="lg" className="w-full">
+                      <User className="w-4 h-4 mr-2" />
+                      Access Patient Portal
+                    </Button>
+                  </Link>
+                </div>
+              </Card>
+            </motion.div>
+
+            {/* Doctor Portal Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.2 }}
+            >
+              <Card premium hover className="h-full flex flex-col">
+                <div className="p-8 flex-1">
+                  <div className="w-16 h-16 rounded-2xl bg-amber-100 flex items-center justify-center mb-6">
+                    <Stethoscope className="w-8 h-8 text-secondary" />
+                  </div>
+                  <h3 className="text-2xl font-bold mb-4">Doctor Portal</h3>
+                  <p className="text-muted-foreground mb-6">
+                    Designed for healthcare professionals to manage patient appointments, access medical records, and update treatment plans efficiently.
+                  </p>
+                  <ul className="space-y-3 mb-8">
+                    <li className="flex items-start">
+                      <CheckCircle className="w-5 h-5 text-secondary mr-2 mt-0.5 flex-shrink-0" />
+                      <span>Manage your patient appointments</span>
+                    </li>
+                    <li className="flex items-start">
+                      <CheckCircle className="w-5 h-5 text-secondary mr-2 mt-0.5 flex-shrink-0" />
+                      <span>Update patient records and prescriptions</span>
+                    </li>
+                    <li className="flex items-start">
+                      <CheckCircle className="w-5 h-5 text-secondary mr-2 mt-0.5 flex-shrink-0" />
+                      <span>Collaborate with other healthcare professionals</span>
+                    </li>
+                  </ul>
+                </div>
+                <div className="p-8 pt-0 mt-auto">
+                  <Link to="/doctor-portal">
+                    <Button variant="secondary" size="lg" className="w-full">
+                      <Stethoscope className="w-4 h-4 mr-2" />
+                      Access Doctor Portal
+                    </Button>
+                  </Link>
+                </div>
+              </Card>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+      
+      {/* Testimonials Section */}
+      <section className="py-20 bg-gradient-to-br from-primary/5 to-secondary/5">
+        <div className="container-hospital">
+          <motion.div 
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            className="text-center mb-16"
+          >
+            <h2 className="text-4xl lg:text-5xl font-bold text-foreground mb-6">
+              What Our <span className="text-gradient">Patients Say</span>
+            </h2>
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
+              Discover why our patients trust us with their healthcare needs and how 
+              we've made a difference in their lives.
+            </p>
+          </motion.div>
+          
+          <Carousel 
+            opts={{ loop: true, align: "center" }}
+            className="w-full"
+          >
+            <CarouselContent>
+              {(testimonials.length > 0 ? testimonials : [
+                {
+                  id: '1',
+                  name: 'Jennifer Anderson',
+                  text: 'The care I received at MediCare+ was exceptional. The doctors were knowledgeable and took the time to explain everything clearly. I felt valued as a patient.',
+                  rating: 5,
+                  image: 'https://images.unsplash.com/photo-1438761681033-6461ffad8d80?w=100&h=100&fit=crop&crop=face',
+                  title: 'Cardiac Patient'
+                },
+                {
+                  id: '2',
+                  name: 'Robert Johnson',
+                  text: 'I was extremely nervous about my surgery, but the staff made me feel comfortable and secure. The follow-up care was just as impressive. I recommend MediCare+ to everyone.',
+                  rating: 5,
+                  image: 'https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=100&h=100&fit=crop&crop=face',
+                  title: 'Surgery Patient'
+                },
+                {
+                  id: '3',
+                  name: 'Maria Garcia',
+                  text: 'The pediatric department is amazing! My son was scared of doctors, but the staff here made him feel so at ease. They truly know how to handle children with care and compassion.',
+                  rating: 5,
+                  image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=face',
+                  title: 'Parent'
+                }
+              ]).map((testimonial) => (
+                <CarouselItem key={testimonial.id} className="md:basis-1/2 lg:basis-1/3 p-4">
+                  <Card premium className="p-6 h-full flex flex-col">
+                    <div className="flex-grow">
+                      <div className="flex mb-4">
+                        {[...Array(5)].map((_, i) => (
+                          <Star 
+                            key={i} 
+                            fill={i < testimonial.rating ? "currentColor" : "none"}
+                            className={i < testimonial.rating ? "w-5 h-5 text-yellow-500" : "w-5 h-5 text-gray-300"} 
+                          />
+                        ))}
+                      </div>
+                      <p className="text-muted-foreground mb-6 italic">
+                        "{testimonial.text}"
+                      </p>
+                    </div>
+                    <div className="flex items-center">
+                      {testimonial.image && (
+                        <img 
+                          src={testimonial.image} 
+                          alt={testimonial.name}
+                          className="w-12 h-12 rounded-full object-cover mr-4"
+                        />
+                      )}
+                      <div>
+                        <h4 className="font-semibold text-foreground">{testimonial.name}</h4>
+                        <p className="text-sm text-muted-foreground">{testimonial.title}</p>
+                      </div>
+                    </div>
+                  </Card>
+                </CarouselItem>
+              ))}
+            </CarouselContent>
+            <div className="flex items-center justify-center mt-8 gap-4">
+              <CarouselPrevious className="static" />
+              <CarouselNext className="static" />
+            </div>
+          </Carousel>
+        </div>
+      </section>
+      
+      {/* Portal Access Section */}
+      <section className="py-20 bg-gradient-to-br from-primary/5 via-white to-secondary/5">
+        <div className="container-hospital">
+          <motion.div 
+            initial={{ opacity: 0 }}
+            whileInView={{ opacity: 1 }}
+            viewport={{ once: true }}
+            className="text-center mb-16"
+          >
+            <h2 className="text-4xl lg:text-5xl font-bold text-foreground mb-6">
+              Access Your <span className="text-gradient">Health Portal</span>
+            </h2>
+            <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
+              Seamlessly manage your healthcare journey with our dedicated portals for patients and healthcare professionals.
+            </p>
+          </motion.div>
+
+          <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+            {/* Patient Portal Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.1 }}
+            >
+              <Card premium hover className="h-full flex flex-col">
+                <div className="p-8 flex-1">
+                  <div className="w-16 h-16 rounded-2xl bg-blue-100 flex items-center justify-center mb-6">
+                    <User className="w-8 h-8 text-primary" />
+                  </div>
+                  <h3 className="text-2xl font-bold mb-4">Patient Portal</h3>
+                  <p className="text-muted-foreground mb-6">
+                    Access your medical records, upcoming appointments, prescriptions, and lab results. Manage your healthcare journey from anywhere, anytime.
+                  </p>
+                  <ul className="space-y-3 mb-8">
+                    <li className="flex items-start">
+                      <CheckCircle className="w-5 h-5 text-primary mr-2 mt-0.5 flex-shrink-0" />
+                      <span>View and manage your appointments</span>
+                    </li>
+                    <li className="flex items-start">
+                      <CheckCircle className="w-5 h-5 text-primary mr-2 mt-0.5 flex-shrink-0" />
+                      <span>Access your medical records and prescriptions</span>
+                    </li>
+                    <li className="flex items-start">
+                      <CheckCircle className="w-5 h-5 text-primary mr-2 mt-0.5 flex-shrink-0" />
+                      <span>Track your health metrics and progress</span>
+                    </li>
+                  </ul>
+                </div>
+                <div className="p-8 pt-0 mt-auto">
+                  <Link to="/patient-portal">
+                    <Button variant="primary" size="lg" className="w-full">
+                      <User className="w-4 h-4 mr-2" />
+                      Access Patient Portal
+                    </Button>
+                  </Link>
+                </div>
+              </Card>
+            </motion.div>
+
+            {/* Doctor Portal Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              whileInView={{ opacity: 1, y: 0 }}
+              viewport={{ once: true }}
+              transition={{ delay: 0.2 }}
+            >
+              <Card premium hover className="h-full flex flex-col">
+                <div className="p-8 flex-1">
+                  <div className="w-16 h-16 rounded-2xl bg-amber-100 flex items-center justify-center mb-6">
+                    <Stethoscope className="w-8 h-8 text-secondary" />
+                  </div>
+                  <h3 className="text-2xl font-bold mb-4">Doctor Portal</h3>
+                  <p className="text-muted-foreground mb-6">
+                    Designed for healthcare professionals to manage patient appointments, access medical records, and update treatment plans efficiently.
+                  </p>
+                  <ul className="space-y-3 mb-8">
+                    <li className="flex items-start">
+                      <CheckCircle className="w-5 h-5 text-secondary mr-2 mt-0.5 flex-shrink-0" />
+                      <span>Manage your patient appointments</span>
+                    </li>
+                    <li className="flex items-start">
+                      <CheckCircle className="w-5 h-5 text-secondary mr-2 mt-0.5 flex-shrink-0" />
+                      <span>Update patient records and prescriptions</span>
+                    </li>
+                    <li className="flex items-start">
+                      <CheckCircle className="w-5 h-5 text-secondary mr-2 mt-0.5 flex-shrink-0" />
+                      <span>Collaborate with other healthcare professionals</span>
+                    </li>
+                  </ul>
+                </div>
+                <div className="p-8 pt-0 mt-auto">
+                  <Link to="/doctor-portal">
+                    <Button variant="secondary" size="lg" className="w-full">
+                      <Stethoscope className="w-4 h-4 mr-2" />
+                      Access Doctor Portal
+                    </Button>
+                  </Link>
+                </div>
+              </Card>
+            </motion.div>
+          </div>
+        </div>
+      </section>
+      
+      {/* Doctor Profile Modal */}
+      <AnimatePresence>
+        {showDoctorModal && selectedDoctor && (
+          <motion.div 
+            className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+          >
+            <motion.div
+              className="relative bg-white w-full max-w-4xl max-h-[90vh] overflow-y-auto rounded-2xl shadow-2xl"
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              transition={{ type: 'spring', damping: 25, stiffness: 500 }}
+            >
+              {/* Close button */}
+              <button 
+                onClick={handleCloseModal}
+                className="absolute top-4 right-4 z-10 bg-white/80 backdrop-blur-sm rounded-full p-2 hover:bg-muted transition-colors"
+              >
+                <X className="w-5 h-5 text-foreground" />
+              </button>
+              
+              {/* Doctor header */}
+              <div className="relative bg-gradient-to-r from-primary to-secondary text-white p-8 pb-20">
+                <div className="flex flex-col md:flex-row items-center">
+                  <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-white mb-4 md:mb-0 md:mr-6">
+                    <img 
+                      src={selectedDoctor.image || 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=300&h=300&fit=crop&crop=face'} 
+                      alt={`Dr. ${selectedDoctor.name}`}
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  <div className="text-center md:text-left">
+                    <h2 className="text-3xl font-bold mb-1">Dr. {selectedDoctor.name}</h2>
+                    <p className="text-white/80 text-xl mb-3">{selectedDoctor.specialty}</p>
+                    <div className="flex flex-wrap items-center justify-center md:justify-start gap-3">
+                      {selectedDoctor.department && (
+                        <Badge variant="secondary" className="bg-white/20 hover:bg-white/30">
+                          {selectedDoctor.department}
+                        </Badge>
+                      )}
+                      <div className="flex items-center">
+                        {[...Array(5)].map((_, i) => (
+                          <Star
+                            key={i}
+                            className={`w-4 h-4 ${i < Math.floor(selectedDoctor.rating || 4.5) ? 'text-yellow-300 fill-current' : 'text-white/30'}`}
+                          />
+                        ))}
+                        <span className="ml-2">({selectedDoctor.rating || '4.5'})</span>
+                      </div>
+                      <div className="flex items-center">
+                        <MapPin className="w-4 h-4 mr-1" />
+                        <span>{selectedDoctor.location || 'Main Hospital'}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Doctor content */}
+              <div className="bg-white rounded-t-3xl -mt-12 relative z-10 p-8">
+                {/* Tabs */}
+                <div className="flex border-b border-border mb-6">
+                  <button
+                    className={`px-6 py-3 text-sm font-medium transition-colors ${activeTab === 'about' ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground hover:text-foreground'}`}
+                    onClick={() => setActiveTab('about')}
+                  >
+                    <div className="flex items-center">
+                      <User className="w-4 h-4 mr-2" />
+                      About
+                    </div>
+                  </button>
+                  <button
+                    className={`px-6 py-3 text-sm font-medium transition-colors ${activeTab === 'experience' ? 'text-primary border-b-2 border-primary' : 'text-muted-foreground hover:text-foreground'}`}
+                    onClick={() => setActiveTab('experience')}
+                  >
+                    <div className="flex items-center">
+                      <Award className="w-4 h-4 mr-2" />
+                      Experience
+                    </div>
+                  </button>
+                </div>
+                
+                {/* Tab Content */}
+                <div className="mb-8">
+                  {activeTab === 'about' && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 20 }}
+                      transition={{ duration: 0.3 }}
+                      className="space-y-6"
+                    >
+                      {/* Bio */}
+                      <div>
+                        <h3 className="text-xl font-semibold text-foreground mb-3">Biography</h3>
+                        <p className="text-muted-foreground leading-relaxed">
+                          {selectedDoctor.bio || `Dr. ${selectedDoctor.name} is a dedicated healthcare professional specializing in ${selectedDoctor.specialty}. With ${selectedDoctor.experience || 'years of'} experience, they are committed to providing excellent patient care and staying at the forefront of medical advancements in their field.`}
+                        </p>
+                      </div>
+                      
+                      {/* Education */}
+                      <div>
+                        <h3 className="text-xl font-semibold text-foreground mb-3">Education & Training</h3>
+                        <ul className="space-y-3">
+                          {selectedDoctor.education && selectedDoctor.education.length > 0 ? (
+                            selectedDoctor.education.map((edu, index) => (
+                              <li key={index} className="flex items-start">
+                                <div className="mr-3 mt-1">
+                                  <BookOpen className="w-5 h-5 text-primary" />
+                                </div>
+                                <div>
+                                  <p className="text-foreground">{edu}</p>
+                                </div>
+                              </li>
+                            ))
+                          ) : (
+                            <>
+                              <li className="flex items-start">
+                                <div className="mr-3 mt-1">
+                                  <BookOpen className="w-5 h-5 text-primary" />
+                                </div>
+                                <div>
+                                  <p className="text-foreground">MD in {selectedDoctor.specialty}, Medical University</p>
+                                </div>
+                              </li>
+                              <li className="flex items-start">
+                                <div className="mr-3 mt-1">
+                                  <BookOpen className="w-5 h-5 text-primary" />
+                                </div>
+                                <div>
+                                  <p className="text-foreground">Residency, Central Hospital</p>
+                                </div>
+                              </li>
+                            </>
+                          )}
+                        </ul>
+                      </div>
+                      
+                      {/* Languages */}
+                      <div>
+                        <h3 className="text-xl font-semibold text-foreground mb-3">Languages</h3>
+                        <div className="flex flex-wrap gap-2">
+                          {selectedDoctor.languages && selectedDoctor.languages.length > 0 ? (
+                            selectedDoctor.languages.map((language, index) => (
+                              <Badge key={index} variant="secondary" className="px-3 py-1">
+                                {language}
+                              </Badge>
+                            ))
+                          ) : (
+                            <>
+                              <Badge variant="secondary" className="px-3 py-1">English</Badge>
+                              <Badge variant="secondary" className="px-3 py-1">Spanish</Badge>
+                            </>
+                          )}
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                  
+                  {activeTab === 'experience' && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      exit={{ opacity: 0, y: 20 }}
+                      transition={{ duration: 0.3 }}
+                      className="space-y-6"
+                    >
+                      {/* Experience */}
+                      <div>
+                        <h3 className="text-xl font-semibold text-foreground mb-3">Professional Experience</h3>
+                        <div className="space-y-4">
+                          <div className="flex items-start">
+                            <div className="mr-3 mt-1">
+                              <Stethoscope className="w-5 h-5 text-primary" />
+                            </div>
+                            <div>
+                              <p className="text-foreground font-medium">{selectedDoctor.experience || '10+ years'} of clinical experience</p>
+                              <p className="text-muted-foreground">Specialized in {selectedDoctor.specialty}</p>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                      
+                      {/* Awards */}
+                      <div>
+                        <h3 className="text-xl font-semibold text-foreground mb-3">Awards & Recognitions</h3>
+                        <ul className="space-y-3">
+                          {selectedDoctor.awards && selectedDoctor.awards.length > 0 ? (
+                            selectedDoctor.awards.map((award, index) => (
+                              <li key={index} className="flex items-start">
+                                <div className="mr-3 mt-1">
+                                  <Award className="w-5 h-5 text-primary" />
+                                </div>
+                                <div>
+                                  <p className="text-foreground">{award}</p>
+                                </div>
+                              </li>
+                            ))
+                          ) : (
+                            <li className="text-muted-foreground">Information not available</li>
+                          )}
+                        </ul>
+                      </div>
+                    </motion.div>
+                  )}
+                </div>
+                
+                {/* Action buttons */}
+                <div className="mt-8 flex flex-wrap gap-4">
+                  <Link to="/appointment-booking" state={{ doctorId: selectedDoctor.id, doctorName: selectedDoctor.name }}>
+                    <Button variant="primary" size="lg">
+                      <Calendar className="w-4 h-4 mr-2" />
+                      Book Appointment
+                    </Button>
+                  </Link>
+                  <Link to="/doctors">
+                    <Button variant="outline" size="lg">
+                      View All Doctors
+                    </Button>
+                  </Link>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <Footer />
     </div>
   );

@@ -16,6 +16,7 @@ import AdminLogin from "./pages/admin/Login";
 import NotFound from "./pages/NotFound";
 import ServicesManagement from "./pages/admin/ServicesManagement";
 import ScrollToTop from "./components/atoms/ScrollToTop";
+import DoctorPortal from "./pages/DoctorPortal";
 
 const queryClient = new QueryClient();
 
@@ -35,6 +36,7 @@ const App = () => (
             <Route path="/appointment-booking" element={<AppointmentBooking />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/patient-portal" element={<PatientPortal />} />
+            <Route path="/doctor-portal" element={<DoctorPortal />} />
             <Route path="/admin/login" element={<AdminLogin />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/services" element={<ServicesManagement />} />
