@@ -24,6 +24,7 @@ const Navigation: React.FC = () => {
   const navigationItems = [
     { label: 'Home', href: '/', icon: Home },
     { label: 'Services', href: '/services', icon: Stethoscope },
+    { label: 'Doctors', href: '/doctors', icon: User },
     { label: 'Appointments', href: '/appointment-booking', icon: Calendar },
     { label: 'Contact', href: '/contact', icon: MessageCircle },
   ];
@@ -84,6 +85,20 @@ const Navigation: React.FC = () => {
           <div className="hidden lg:flex items-center space-x-4">
             {currentUser ? (
               <>
+                <Link 
+                  to="/patient-portal" 
+                  className={`flex items-center space-x-1 px-3 py-1.5 rounded-md transition-colors ${
+                    location.pathname === '/patient-portal' 
+                      ? 'bg-primary/10 text-primary' 
+                      : isScrolled 
+                        ? 'hover:bg-muted' 
+                        : 'text-white hover:bg-white/10'
+                  }`}
+                  onClick={handleNavLinkClick}
+                >
+                  <User className="w-4 h-4" />
+                  <span>Patient Portal</span>
+                </Link>
                 <Button
                   variant={isScrolled ? 'primary' : 'accent'}
                   size="md"
@@ -113,20 +128,28 @@ const Navigation: React.FC = () => {
                   <div className="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg overflow-hidden z-50 opacity-0 scale-95 group-hover:opacity-100 group-hover:scale-100 transition-all duration-200 origin-top-right invisible group-hover:visible">
                     <div className="py-1">
                       <Link 
-                        to="/signin?userType=patient" 
+                        to="/signin" 
                         className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                         onClick={handleNavLinkClick}
                       >
                         <User className="w-4 h-4 mr-2 text-primary" />
-                        Patient Portal
+                        Sign In
                       </Link>
                       <Link 
-                        to="/signin?userType=doctor" 
+                        to="/patient-signup" 
                         className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
                         onClick={handleNavLinkClick}
                       >
-                        <Stethoscope className="w-4 h-4 mr-2 text-primary" />
-                        Doctor Portal
+                        <User className="w-4 h-4 mr-2 text-secondary" />
+                        Patient Sign Up
+                      </Link>
+                      <Link 
+                        to="/signin?userType=patient&loginMethod=accessCode" 
+                        className="flex items-center px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                        onClick={handleNavLinkClick}
+                      >
+                        <Shield className="w-4 h-4 mr-2 text-accent" />
+                        Patient Portal
                       </Link>
                     </div>
                   </div>
@@ -180,6 +203,14 @@ const Navigation: React.FC = () => {
               <div className="pt-4 space-y-3 border-t border-gray-200">
                 {currentUser ? (
                   <>
+                    <Link 
+                      to="/patient-portal" 
+                      className="flex items-center space-x-2 px-4 py-2 text-sm font-medium text-foreground hover:bg-gray-100 rounded-md"
+                      onClick={handleNavLinkClick}
+                    >
+                      <User className="w-4 h-4 text-primary" />
+                      <span>Patient Portal</span>
+                    </Link>
                     <Button variant="primary" size="md" className="w-full justify-center" onClick={async () => {
                       await logout();
                       navigate('/');
@@ -189,23 +220,35 @@ const Navigation: React.FC = () => {
                   </>
                 ) : (
                   <>
-                    <Link to="/signin?userType=patient" onClick={() => setIsMobileMenuOpen(false)}>
-                      <Button variant="outline" size="md" className="w-full justify-center mb-2">
-                        <User className="w-4 h-4 mr-2" />
-                        Patient Portal
-                      </Button>
-                    </Link>
-                    <Link to="/signin?userType=doctor" onClick={() => setIsMobileMenuOpen(false)}>
-                      <Button variant="outline" size="md" className="w-full justify-center mb-2">
-                        <Stethoscope className="w-4 h-4 mr-2" />
-                        Doctor Portal
-                      </Button>
-                    </Link>
                     <Link to="/appointment-booking" onClick={() => setIsMobileMenuOpen(false)}>
                       <Button variant="primary" size="md" className="w-full justify-center">
                         <Calendar className="w-4 h-4 mr-2" />
                         Book Appointment
                       </Button>
+                    </Link>
+                    <Link 
+                      to="/signin" 
+                      className="flex items-center justify-center space-x-2 px-4 py-2 text-sm font-medium text-foreground hover:bg-gray-100 rounded-md"
+                      onClick={handleNavLinkClick}
+                    >
+                      <LogIn className="w-4 h-4 text-primary" />
+                      <span>Sign In</span>
+                    </Link>
+                    <Link 
+                      to="/patient-signup" 
+                      className="flex items-center justify-center space-x-2 px-4 py-2 text-sm font-medium text-foreground hover:bg-gray-100 rounded-md"
+                      onClick={handleNavLinkClick}
+                    >
+                      <User className="w-4 h-4 text-secondary" />
+                      <span>Patient Sign Up</span>
+                    </Link>
+                    <Link 
+                      to="/signin?userType=patient&loginMethod=accessCode" 
+                      className="flex items-center justify-center space-x-2 px-4 py-2 text-sm font-medium text-foreground hover:bg-gray-100 rounded-md"
+                      onClick={handleNavLinkClick}
+                    >
+                      <Shield className="w-4 h-4 text-accent" />
+                      <span>Patient Portal</span>
                     </Link>
                   </>
                 )}

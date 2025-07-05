@@ -224,93 +224,85 @@ const Contact = () => {
     <div className="min-h-screen bg-background">
       <Navigation />
       
-      {/* Modern Hero Section with Consistent Design */}
-      <section className="relative min-h-[60vh] flex items-center justify-center overflow-hidden">
-        {/* Multi-layered background with enhanced depth */}
-        <div className="absolute inset-0 w-full h-full">
-          {/* Base image with modern hospital building */}
-          <img
-            src="https://images.unsplash.com/photo-1538108149393-fbbd81895907?w=1920&h=1080&fit=crop&q=80"
-            alt="Modern hospital building"
-            className="absolute inset-0 w-full h-full object-cover"
-          />
-          
-          {/* Gradient overlays */}
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/95 via-primary/85 to-secondary/90 z-10"></div>
-          <div className="absolute inset-0 bg-[url('/src/assets/pattern-dot.svg')] opacity-10 z-[11]"></div>
-          
-          {/* Animated accent elements */}
-          <div className="absolute top-[20%] left-[10%] w-[500px] h-[500px] rounded-full bg-accent/10 mix-blend-overlay animate-blob animation-delay-2000 z-[12]"></div>
-          <div className="absolute bottom-[20%] right-[10%] w-[600px] h-[600px] rounded-full bg-secondary/10 mix-blend-overlay animate-blob z-[12]"></div>
-          <div className="absolute top-[60%] right-[20%] w-[400px] h-[400px] rounded-full bg-primary-light/10 mix-blend-overlay animate-blob animation-delay-4000 z-[12]"></div>
-          
-          {/* Floating geometric shapes */}
-          <motion.div 
-            className="absolute top-[20%] right-[20%] w-24 h-24 border-2 border-white/10 rounded-lg z-[13]"
-            animate={{ 
-              rotate: 360,
-              y: [0, 15, 0],
-            }}
-            transition={{ 
-              rotate: { duration: 20, repeat: Infinity, ease: "linear" },
-              y: { duration: 8, repeat: Infinity, ease: "easeInOut" }
-            }}
-          ></motion.div>
-          
-          {/* Particle effects */}
-          <div className="absolute inset-0 z-[14]">
-            {[...Array(20)].map((_, i) => (
-              <motion.div
-                key={i}
-                className="absolute w-1 h-1 bg-white/20 rounded-full"
-                style={{
-                  top: `${Math.random() * 100}%`,
-                  left: `${Math.random() * 100}%`,
-                }}
-                animate={{
-                  opacity: [0, 1, 0],
-                  scale: [0, 1.5, 0],
-                }}
-                transition={{
-                  duration: Math.random() * 3 + 2,
-                  repeat: Infinity,
-                  delay: Math.random() * 5,
-                }}
-              />
-            ))}
-          </div>
+      {/* Hero Section - Enhanced with animated elements */}
+      <section className="pt-28 pb-16 bg-gradient-to-br from-primary via-primary/90 to-secondary relative overflow-hidden">
+        {/* Background decorative elements */}
+        <div className="absolute inset-0 z-0 overflow-hidden">
+          <div className="absolute inset-0 bg-[url('/src/assets/pattern-dot.svg')] opacity-10"></div>
+          <div className="absolute top-[25%] right-[15%] w-64 h-64 rounded-full bg-accent/10 mix-blend-overlay animate-blob"></div>
+          <div className="absolute bottom-[10%] left-[10%] w-72 h-72 rounded-full bg-secondary/20 mix-blend-overlay animate-blob animation-delay-2000"></div>
+          <div className="absolute top-[60%] right-[20%] w-40 h-40 rounded-full bg-white/10 mix-blend-overlay animate-blob animation-delay-4000"></div>
         </div>
         
-        {/* Content */}
-        <div className="container-hospital relative z-20 px-6 py-16 md:py-24 max-w-7xl mx-auto">
-          <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, ease: "easeOut" }}
-            className="text-center max-w-4xl mx-auto"
-          >
-            <motion.div
+        <div className="container-hospital px-4 sm:px-6 lg:px-8 relative z-10">
+          <div className="max-w-4xl mx-auto text-center text-white">
+            <div className="inline-flex items-center px-4 py-2 rounded-full bg-white/10 backdrop-blur-md text-sm font-medium mb-6">
+              <div className="w-2 h-2 rounded-full bg-accent animate-pulse mr-2"></div>
+              <span>We're Here For You</span>
+            </div>
+            
+            <motion.h1 
+              className="text-3xl md:text-4xl lg:text-5xl font-bold mb-4"
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2, duration: 0.6 }}
+              transition={{ duration: 0.5 }}
             >
-              <div className="inline-flex items-center px-5 py-3 rounded-full bg-white/15 backdrop-blur-lg text-base font-medium text-white shadow-glow mb-6">
-                <div className="relative mr-3">
-                  <div className="w-3 h-3 rounded-full bg-accent animate-pulse-soft"></div>
-                  <div className="absolute -inset-1 rounded-full bg-accent/30 animate-ripple"></div>
+              Get In <span className="text-gradient bg-gradient-to-r from-accent to-white bg-clip-text text-transparent">Touch</span> With Us
+            </motion.h1>
+            
+            <motion.p 
+              className="text-lg md:text-xl opacity-90 mb-8"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.1 }}
+            >
+              Reach out to our dedicated healthcare team for appointments, inquiries, or feedback. We're here to help you navigate your healthcare journey.
+            </motion.p>
+            
+            {/* Contact Info Cards */}
+            <motion.div 
+              className="grid grid-cols-1 md:grid-cols-3 gap-4 max-w-3xl mx-auto mt-10"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.5, delay: 0.2 }}
+            >
+              {/* Phone Card */}
+              <motion.div 
+                className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-4 flex flex-col items-center hover:bg-white/15 transition-all duration-300"
+                whileHover={{ y: -5, boxShadow: "0 15px 30px rgba(0,0,0,0.1)" }}
+              >
+                <div className="w-12 h-12 rounded-full bg-accent/20 flex items-center justify-center mb-3">
+                  <Phone className="w-6 h-6 text-white" />
                 </div>
-                We're Here To Help
-              </div>
+                <h3 className="text-white font-medium mb-1">Call Us</h3>
+                <p className="text-white/80 text-sm">+1 (555) 123-4567</p>
+              </motion.div>
               
-              <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight">
-                Contact <span className="text-gradient bg-gradient-to-r from-accent to-white bg-clip-text text-transparent">Us</span>
-              </h1>
-              <p className="text-xl md:text-2xl text-white/90 max-w-3xl mx-auto mb-10 leading-relaxed backdrop-blur-sm bg-white/5 p-5 rounded-xl border border-white/10">
-                Reach out to our dedicated team for appointments, inquiries, or feedback. We're here to help you navigate your healthcare journey.
-              </p>
+              {/* Email Card */}
+              <motion.div 
+                className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-4 flex flex-col items-center hover:bg-white/15 transition-all duration-300"
+                whileHover={{ y: -5, boxShadow: "0 15px 30px rgba(0,0,0,0.1)" }}
+              >
+                <div className="w-12 h-12 rounded-full bg-accent/20 flex items-center justify-center mb-3">
+                  <Mail className="w-6 h-6 text-white" />
+                </div>
+                <h3 className="text-white font-medium mb-1">Email Us</h3>
+                <p className="text-white/80 text-sm">contact@medicare.com</p>
+              </motion.div>
               
+              {/* Location Card */}
+              <motion.div 
+                className="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl p-4 flex flex-col items-center hover:bg-white/15 transition-all duration-300"
+                whileHover={{ y: -5, boxShadow: "0 15px 30px rgba(0,0,0,0.1)" }}
+              >
+                <div className="w-12 h-12 rounded-full bg-accent/20 flex items-center justify-center mb-3">
+                  <MapPin className="w-6 h-6 text-white" />
+                </div>
+                <h3 className="text-white font-medium mb-1">Visit Us</h3>
+                <p className="text-white/80 text-sm">123 Medical Center Drive</p>
+              </motion.div>
             </motion.div>
-          </motion.div>
+          </div>
         </div>
       </section>
 

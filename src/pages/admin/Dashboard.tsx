@@ -20,6 +20,7 @@ import { db } from '../../lib/firebase';
 import { useAuth } from '../../hooks/useAuth';
 import { useNavigate, Link } from 'react-router-dom';
 import { toast } from 'sonner';
+import AdminLayout from '../../components/layouts/AdminLayout';
 import { 
   Search, Filter, Star, Calendar, Users, Stethoscope, Building, Activity, 
   UserCheck, Plus, Edit, Trash2, MoreHorizontal, Upload, X, Check,
@@ -901,6 +902,7 @@ const AdminDashboard = () => {
     };
 
     return (
+      <AdminLayout>
       <div className="space-y-8">
         {/* Header with welcome and date */}
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between">
@@ -1800,6 +1802,7 @@ const AdminDashboard = () => {
           </motion.div>
         </div>
       </div>
+      </AdminLayout>
     );
   }
 

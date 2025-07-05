@@ -41,11 +41,11 @@ const SignIn: React.FC = () => {
     if (loginMethodParam === 'accessCode') {
       setUseAccessCode(true);
       
-      // If redirected from auth pages, show appropriate message
+      // If redirected from portal pages, show appropriate message
       if (userTypeParam === 'patient') {
-        toast.info('Please log in with your patient access code.');
+        toast.info('Please log in with your patient access code to access the patient portal.');
       } else if (userTypeParam === 'doctor') {
-        toast.info('Please log in with your doctor access code.');
+        toast.info('Please log in with your doctor access code to access the doctor portal.');
       }
     }
     
@@ -73,7 +73,7 @@ const SignIn: React.FC = () => {
       
       // Special warning for doctor sign-ups
       if (userType === 'doctor') {
-        toast.warning('Note: Doctor accounts require admin verification before access will be granted.');
+        toast.warning('Note: Doctor accounts require admin verification before portal access will be granted.');
       }
       
       try {
@@ -103,15 +103,15 @@ const SignIn: React.FC = () => {
             createdAt: new Date()
           });
           
-          toast.info('Your doctor account request has been submitted for admin verification. You will be redirected to the home page for now.');
+          toast.info('Your doctor account request has been submitted for admin verification. You will be redirected to the patient portal for now.');
           
-          // Redirect to home page while doctor verification is pending
+          // Redirect to patient portal while doctor verification is pending
           setTimeout(() => {
-            navigate('/');
+            navigate('/patient-portal');
           }, 3000);
         } catch (error) {
           console.error('Error creating pending doctor record:', error);
-          navigate('/');
+          navigate('/patient-portal');
         }
       } catch (error: any) {
         console.error('Registration error:', error);
@@ -163,7 +163,7 @@ const SignIn: React.FC = () => {
           }
         }
 
-        // Special handling for doctor login - enforce access code login
+        // Special handling for doctor login - enforce access code login for portal access
         if (userType === 'doctor') {
           const doctorsRef = collection(db, 'doctors');
           const q = query(doctorsRef, where('email', '==', email));
@@ -171,12 +171,12 @@ const SignIn: React.FC = () => {
           
           if (querySnapshot.empty && userDoc.data()?.role !== 'admin') {
             toast.warning('Your doctor account is pending verification by administrators.');
-            toast.info('Access requires an administrator-provided access code.');
+            toast.info('Access to the doctor portal requires an administrator-provided access code.');
             navigate('/signin?userType=doctor&loginMethod=accessCode');
             return;
           }
           
-          // Check if the doctor has an access code - enforce access code login
+          // Check if the doctor has an access code - enforce access code login for portal access
           if (querySnapshot.docs.length > 0 && userDoc.data()?.role !== 'admin') {
             const doctorId = querySnapshot.docs[0].id;
             const accessCodesRef = collection(db, 'doctorAccessCodes');
@@ -185,38 +185,47 @@ const SignIn: React.FC = () => {
             
             // If doctor has an access code but is trying to login with email/password, enforce access code login
             if (!accessCodeSnapshot.empty) {
-              toast.info('Doctor access requires using your access code to login.');
+              toast.info('Doctor portal access requires using your access code to login.');
               navigate('/signin?userType=doctor&loginMethod=accessCode');
               return;
             }
           }
         }
         
-        // Special handling for patient login - enforce access code login
+        // Special handling for patient login - don't enforce access code login anymore
         if (userType === 'patient') {
           const patientsRef = collection(db, 'patients');
           const q = query(patientsRef, where('email', '==', email));
           const querySnapshot = await getDocs(q);
           
-          if (!querySnapshot.empty && userDoc.data()?.role !== 'admin') {
-            const patientId = querySnapshot.docs[0].id;
-            const accessCodesRef = collection(db, 'accessCodes');
-            const accessCodeQuery = query(accessCodesRef, where('patientId', '==', patientId));
-            const accessCodeSnapshot = await getDocs(accessCodeQuery);
-            
-            // If patient has an access code but is trying to login with email/password, enforce access code login
-            if (!accessCodeSnapshot.empty) {
-              toast.info('Patient access requires using your access code to login.');
-              navigate('/signin?userType=patient&loginMethod=accessCode');
-              return;
+          // If no patient record found, try to create one
+          if (querySnapshot.empty && userDoc.data()?.role !== 'admin') {
+            // Create a basic patient profile
+            try {
+              const patientData = {
+                email: email,
+                firstName: userDoc.data()?.firstName || '',
+                lastName: userDoc.data()?.lastName || '',
+                createdAt: new Date(),
+                updatedAt: new Date()
+              };
+              
+              await setDoc(doc(db, 'patients', userCredential.user.uid), patientData);
+              toast.success('Patient profile created successfully.');
+            } catch (error) {
+              console.error('Error creating patient profile:', error);
             }
           }
         }
         
         toast.success('Login successful!');
         
-        // Redirect to home page
-        navigate('/');
+        // Redirect based on user type with a full page reload to ensure proper initialization
+        if (userType === 'doctor') {
+          window.location.href = '/doctor-portal';
+        } else {
+          window.location.href = '/patient-portal';
+        }
       } catch (error: any) {
         console.error('Login error:', error);
         toast.error(error.message || 'Login failed');
@@ -235,10 +244,10 @@ const SignIn: React.FC = () => {
         <div className="container-hospital">
           <div className="text-center">
             <h1 className="text-3xl lg:text-4xl font-bold mb-4">
-              {userType === 'patient' ? 'Patient' : 'Doctor'} <span className="text-gradient bg-gradient-to-r from-accent to-white bg-clip-text text-transparent">Sign In</span>
+              Sign In to Your <span className="text-gradient bg-gradient-to-r from-accent to-white bg-clip-text text-transparent">Portal</span>
             </h1>
             <p className="text-xl opacity-90 max-w-2xl mx-auto">
-              Access your healthcare account securely.
+              Access your personalized healthcare dashboard and manage your information securely.
             </p>
           </div>
         </div>
@@ -283,19 +292,19 @@ const SignIn: React.FC = () => {
                   : (userType === 'patient' ? 'Patient Sign In' : 'Doctor Sign In')}
               </h2>
               
-              {/* User Type Information Box */}
+              {/* Portal Information Box */}
               <div className={`mb-6 p-4 rounded-md ${userType === 'patient' ? 'bg-blue-50 border border-blue-200' : 'bg-amber-50 border border-amber-200'}`}>
                 <h3 className={`text-sm font-medium mb-2 ${userType === 'patient' ? 'text-blue-800' : 'text-amber-800'}`}>
                   <div className="flex items-center">
                     {userType === 'patient' ? (
                       <>
                         <User className="w-4 h-4 mr-2" />
-                        Patient Sign In
+                        Patient Portal
                       </>
                     ) : (
                       <>
                         <Stethoscope className="w-4 h-4 mr-2" />
-                        Doctor Sign In
+                        Doctor Portal
                       </>
                     )}
                   </div>
@@ -303,13 +312,13 @@ const SignIn: React.FC = () => {
                 <p className={`text-xs ${userType === 'patient' ? 'text-blue-600' : 'text-amber-700'}`}>
                   {userType === 'patient' 
                     ? 'Access your medical records, upcoming appointments, prescriptions, and lab results. Patients must be registered by hospital staff.'
-                    : 'Doctor access is restricted to healthcare professionals added by administrators. If you\'re a doctor, please contact hospital administration to verify your account.'}
+                    : 'Doctor access is restricted to healthcare professionals added by administrators. If you\'re a doctor but can\'t log in, please contact hospital administration to verify your account.'}
                 </p>
                 {userType === 'doctor' && (
                   <div className="mt-2 p-2 bg-amber-100 rounded border border-amber-300 flex items-start">
                     <AlertCircle className="w-4 h-4 text-amber-800 mr-2 flex-shrink-0 mt-0.5" />
                     <p className="text-xs text-amber-800">
-                      Note: Only doctors that have been pre-registered by the admin can access the system. 
+                      Note: Only doctors that have been pre-registered by the admin can access the Doctor Portal. 
                       New sign-ups will require admin approval before gaining access.
                     </p>
                   </div>
@@ -393,9 +402,7 @@ const SignIn: React.FC = () => {
               
               {/* Access Code Login Form */}
               {userType === 'patient' && !isSigningUp && useAccessCode ? (
-                <AccessCodeLogin onSuccess={() => navigate('/')} />
-              ) : userType === 'doctor' && !isSigningUp && useAccessCode ? (
-                <DoctorAccessCodeLogin onSuccess={() => navigate('/')} />
+                <AccessCodeLogin onSuccess={() => navigate('/patient-portal')} />
               ) : (
                 <form onSubmit={handleSubmit} className="space-y-6">
                   {isSigningUp && (
@@ -480,6 +487,20 @@ const SignIn: React.FC = () => {
                       </button>
                     </div>
                   </div>
+
+                  {userType === 'patient' && !isSigningUp && (
+                    <div className="flex justify-center">
+                      <p className="text-sm text-muted-foreground">
+                        Don't have an account?{' '}
+                        <a 
+                          href="/patient-signup" 
+                          className="text-primary hover:underline font-medium"
+                        >
+                          Sign up here
+                        </a>
+                      </p>
+                    </div>
+                  )}
 
                   <Button
                     type="submit"

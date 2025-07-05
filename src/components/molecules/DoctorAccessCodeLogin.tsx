@@ -67,7 +67,8 @@ const DoctorAccessCodeLogin: React.FC<DoctorAccessCodeLoginProps> = ({ onSuccess
           if (onSuccess) {
             onSuccess();
           } else {
-            navigate('/');
+            // Use window.location for a full page reload to ensure proper initialization
+            window.location.href = '/doctor-portal';
           }
         } catch (error) {
           console.error('Error signing in with access code:', error);
@@ -94,7 +95,8 @@ const DoctorAccessCodeLogin: React.FC<DoctorAccessCodeLoginProps> = ({ onSuccess
           if (onSuccess) {
             onSuccess();
           } else {
-            navigate('/');
+            // Use window.location for a full page reload to ensure proper initialization
+            window.location.href = '/doctor-portal';
           }
         } catch (error) {
           console.error('Error creating user with access code:', error);

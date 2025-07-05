@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
+import { motion } from 'framer-motion';
 import Navigation from '../components/organisms/Navigation';
 import Card from '../components/atoms/Card';
 import Button from '../components/atoms/Button';
@@ -171,19 +172,19 @@ const PatientPortal = () => {
 
   useEffect(() => {
     if (!currentUser) {
-      // Redirect to signin page with patient portal access code login preselected
-      navigate('/signin?userType=patient&loginMethod=accessCode');
+      // Redirect to signin page for patient login
+      navigate('/signin?userType=patient');
       return;
     }
     
     // Check if user is a patient or admin (admins can access all portals)
     if (userRole && userRole !== 'patient' && userRole !== 'admin') {
       toast.error('Access denied. This portal is for patients only.');
-      navigate('/signin?userType=patient&loginMethod=accessCode');
+      navigate('/signin?userType=patient');
       return;
     }
     
-    // Verify that the patient exists and has an access code
+    // Verify that the patient exists
     const verifyPatientAccess = async () => {
       try {
         if (userRole === 'admin') {
@@ -197,30 +198,28 @@ const PatientPortal = () => {
           return;
         }
         
-        // For patients, verify that they have an access code
+        // For patients, verify that they have an account
         const patientsRef = collection(db, 'patients');
         const q = query(patientsRef, where('email', '==', currentUser?.email));
         const querySnapshot = await getDocs(q);
         
         if (querySnapshot.empty) {
-          toast.error('Your patient account has not been registered. Please contact the hospital for assistance.');
-          navigate('/signin?userType=patient&loginMethod=accessCode');
-          return;
+          // Create a basic patient profile if not found
+          const patientsCollectionRef = collection(db, 'patients');
+          const newPatientRef = doc(patientsCollectionRef);
+          const newPatientData = {
+            email: currentUser.email,
+            firstName: currentUser.displayName?.split(' ')[0] || '',
+            lastName: currentUser.displayName?.split(' ').slice(1).join(' ') || '',
+            createdAt: new Date(),
+            updatedAt: new Date()
+          };
+          
+          await setDoc(newPatientRef, newPatientData);
+          toast.info('Welcome! Please complete your profile information.');
         }
         
-        // Check if this patient has an access code (should have been used to login)
-        const accessCodesRef = collection(db, 'accessCodes');
-        const patientId = querySnapshot.docs[0].id;
-        const accessCodeQuery = query(accessCodesRef, where('patientId', '==', patientId));
-        const accessCodeSnapshot = await getDocs(accessCodeQuery);
-        
-        if (accessCodeSnapshot.empty) {
-          toast.error('Access denied. You must use an access code to login to the patient portal.');
-          navigate('/signin?userType=patient&loginMethod=accessCode');
-          return;
-        }
-        
-        // Patient is verified and has an access code, proceed to fetch data
+        // Patient is verified, proceed to fetch data
         fetchUserAppointments();
         fetchPatientProfile();
         fetchMedicalRecords();
@@ -230,7 +229,7 @@ const PatientPortal = () => {
       } catch (error) {
         console.error('Error verifying patient access:', error);
         toast.error('An error occurred while verifying your access.');
-        navigate('/signin?userType=patient&loginMethod=accessCode');
+        navigate('/signin?userType=patient');
       }
     };
     
@@ -539,7 +538,7 @@ const PatientPortal = () => {
     }
   };
 
-  const getStatusColor = (status) => {
+  const getStatusColor = (status: string | undefined): "primary" | "secondary" | "success" | "warning" | "error" | "info" => {
     switch (status?.toLowerCase()) {
       case 'confirmed': return 'success';
       case 'pending': return 'warning';
@@ -549,12 +548,12 @@ const PatientPortal = () => {
     }
   };
 
-  const formatDate = (dateString) => {
+  const formatDate = (dateString: string | Date | undefined): string => {
     if (!dateString) return 'N/A';
     try {
       return new Date(dateString).toLocaleDateString();
-    } catch {
-      return dateString;
+    } catch (error) {
+      return String(dateString);
     }
   };
 
@@ -566,7 +565,7 @@ const PatientPortal = () => {
     apt.date && (new Date(apt.date) < new Date() || apt.status === 'completed')
   );
 
-  const handleProfileChange = (e) => {
+  const handleProfileChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>): void => {
     const { name, value } = e.target;
     setProfileForm(prev => ({
       ...prev,
@@ -709,7 +708,6 @@ const PatientPortal = () => {
           Add New Metric
         </Button>
       </div>
-      
       {/* Add Metric Form */}
       {addingHealthMetric && (
         <Card premium className="p-6">
@@ -795,7 +793,6 @@ const PatientPortal = () => {
           </div>
         </Card>
       )}
-      
       {/* Metrics List */}
       <div className="space-y-4">
         {healthMetrics.length > 0 ? (
@@ -1112,17 +1109,17 @@ const PatientPortal = () => {
   );
 
   const renderProfile = () => (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div className="flex justify-between items-center">
-        <h3 className="text-xl font-semibold text-foreground flex items-center">
-          <User className="w-5 h-5 mr-2 text-primary" />
-          My Profile
+        <h3 className="text-2xl font-bold text-foreground flex items-center">
+          <User className="w-6 h-6 mr-2 text-primary" />
+          My Health Profile
         </h3>
         {!editingProfile ? (
           <Button 
             onClick={() => setEditingProfile(true)} 
             variant="outline"
-            size="sm"
+            className="border-primary/50 text-primary hover:bg-primary/5"
           >
             <Edit className="w-4 h-4 mr-2" />
             Edit Profile
@@ -1131,8 +1128,7 @@ const PatientPortal = () => {
           <div className="flex space-x-2">
             <Button 
               onClick={() => setEditingProfile(false)} 
-              variant="ghost"
-              size="sm"
+              variant="outline"
             >
               <X className="w-4 h-4 mr-2" />
               Cancel
@@ -1140,243 +1136,422 @@ const PatientPortal = () => {
             <Button 
               onClick={saveProfile} 
               variant="primary"
-              size="sm"
             >
               <Save className="w-4 h-4 mr-2" />
-              Save
+              Save Changes
             </Button>
           </div>
         )}
       </div>
       
-      <Card premium className="p-6">
-        {editingProfile ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div>
-              <label className="block text-sm font-medium mb-1">First Name</label>
-              <input
-                type="text"
-                name="firstName"
-                value={profileForm.firstName}
-                onChange={handleProfileChange}
-                className="w-full p-2 border border-muted rounded-md"
-              />
+      {editingProfile ? (
+        <div className="grid grid-cols-1 gap-8">
+          <Card premium className="p-8 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-primary/5 to-transparent rounded-bl-full -z-0"></div>
+            <div className="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-tr from-secondary/5 to-transparent rounded-tr-full -z-0"></div>
+            
+            <h4 className="text-lg font-semibold mb-6 flex items-center relative z-10">
+              <User className="w-5 h-5 mr-2 text-primary" />
+              Personal Information
+            </h4>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
+              <div>
+                <label className="block text-sm font-medium mb-1">First Name*</label>
+                <input
+                  type="text"
+                  name="firstName"
+                  value={profileForm.firstName}
+                  onChange={handleProfileChange}
+                  className="w-full p-2.5 border border-input rounded-md focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Last Name*</label>
+                <input
+                  type="text"
+                  name="lastName"
+                  value={profileForm.lastName}
+                  onChange={handleProfileChange}
+                  className="w-full p-2.5 border border-input rounded-md focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Phone Number</label>
+                <input
+                  type="tel"
+                  name="phone"
+                  value={profileForm.phone}
+                  onChange={handleProfileChange}
+                  className="w-full p-2.5 border border-input rounded-md focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                  placeholder="+1 (555) 123-4567"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Email Address</label>
+                <input
+                  type="email"
+                  value={currentUser?.email || ''}
+                  disabled
+                  className="w-full p-2.5 border border-input rounded-md bg-muted/20 text-muted-foreground"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Date of Birth</label>
+                <input
+                  type="date"
+                  name="birthDate"
+                  value={profileForm.birthDate}
+                  onChange={handleProfileChange}
+                  className="w-full p-2.5 border border-input rounded-md focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Gender</label>
+                <select
+                  name="gender"
+                  value={profileForm.gender}
+                  onChange={handleProfileChange}
+                  className="w-full p-2.5 border border-input rounded-md focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                >
+                  <option value="">Select Gender</option>
+                  <option value="male">Male</option>
+                  <option value="female">Female</option>
+                  <option value="other">Other</option>
+                  <option value="prefer-not-to-say">Prefer not to say</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Blood Type</label>
+                <select
+                  name="bloodType"
+                  value={profileForm.bloodType}
+                  onChange={handleProfileChange}
+                  className="w-full p-2.5 border border-input rounded-md focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                >
+                  <option value="">Select Blood Type</option>
+                  <option value="A+">A+</option>
+                  <option value="A-">A-</option>
+                  <option value="B+">B+</option>
+                  <option value="B-">B-</option>
+                  <option value="AB+">AB+</option>
+                  <option value="AB-">AB-</option>
+                  <option value="O+">O+</option>
+                  <option value="O-">O-</option>
+                  <option value="Unknown">Unknown</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Address</label>
+                <input
+                  type="text"
+                  name="address"
+                  value={profileForm.address}
+                  onChange={handleProfileChange}
+                  className="w-full p-2.5 border border-input rounded-md focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                  placeholder="123 Main St, City, State 12345"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Preferred Language</label>
+                <select
+                  name="preferredLanguage"
+                  value={profileForm.preferredLanguage}
+                  onChange={handleProfileChange}
+                  className="w-full p-2.5 border border-input rounded-md focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                >
+                  <option value="">Select Language</option>
+                  <option value="english">English</option>
+                  <option value="spanish">Spanish</option>
+                  <option value="french">French</option>
+                  <option value="german">German</option>
+                  <option value="chinese">Chinese</option>
+                  <option value="hindi">Hindi</option>
+                  <option value="arabic">Arabic</option>
+                  <option value="other">Other</option>
+                </select>
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Last Name</label>
-              <input
-                type="text"
-                name="lastName"
-                value={profileForm.lastName}
-                onChange={handleProfileChange}
-                className="w-full p-2 border border-muted rounded-md"
-              />
+          </Card>
+          
+          <Card premium className="p-8 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-accent/5 to-transparent rounded-bl-full -z-0"></div>
+            
+            <h4 className="text-lg font-semibold mb-6 flex items-center relative z-10">
+              <Shield className="w-5 h-5 mr-2 text-accent" />
+              Health Information
+            </h4>
+            
+            <div className="grid grid-cols-1 gap-6 relative z-10">
+              <div>
+                <label className="block text-sm font-medium mb-1">Allergies (comma separated)</label>
+                <input
+                  type="text"
+                  name="allergies"
+                  value={profileForm.allergies}
+                  onChange={handleProfileChange}
+                  className="w-full p-2.5 border border-input rounded-md focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                  placeholder="Penicillin, Peanuts, Latex"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Medications (comma separated)</label>
+                <input
+                  type="text"
+                  name="medications"
+                  value={profileForm.medications}
+                  onChange={handleProfileChange}
+                  className="w-full p-2.5 border border-input rounded-md focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                  placeholder="Lisinopril, Metformin, Atorvastatin"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Medical Conditions (comma separated)</label>
+                <input
+                  type="text"
+                  name="conditions"
+                  value={profileForm.conditions}
+                  onChange={handleProfileChange}
+                  className="w-full p-2.5 border border-input rounded-md focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                  placeholder="Hypertension, Diabetes, Asthma"
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Phone</label>
-              <input
-                type="tel"
-                name="phone"
-                value={profileForm.phone}
-                onChange={handleProfileChange}
-                className="w-full p-2 border border-muted rounded-md"
-              />
+          </Card>
+          
+          <Card premium className="p-8 relative overflow-hidden">
+            <div className="absolute bottom-0 left-0 w-32 h-32 bg-gradient-to-tr from-secondary/5 to-transparent rounded-tr-full -z-0"></div>
+            
+            <h4 className="text-lg font-semibold mb-6 flex items-center relative z-10">
+              <Heart className="w-5 h-5 mr-2 text-red-500" />
+              Emergency Contact
+            </h4>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
+              <div>
+                <label className="block text-sm font-medium mb-1">Contact Name</label>
+                <input
+                  type="text"
+                  name="emergencyContactName"
+                  value={profileForm.emergencyContactName}
+                  onChange={handleProfileChange}
+                  className="w-full p-2.5 border border-input rounded-md focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                  placeholder="John Doe"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Relationship</label>
+                <input
+                  type="text"
+                  name="emergencyContactRelationship"
+                  value={profileForm.emergencyContactRelationship}
+                  onChange={handleProfileChange}
+                  className="w-full p-2.5 border border-input rounded-md focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                  placeholder="Spouse, Parent, Child, etc."
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Contact Phone</label>
+                <input
+                  type="tel"
+                  name="emergencyContactPhone"
+                  value={profileForm.emergencyContactPhone}
+                  onChange={handleProfileChange}
+                  className="w-full p-2.5 border border-input rounded-md focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                  placeholder="+1 (555) 123-4567"
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Email</label>
-              <input
-                type="email"
-                value={currentUser?.email || ''}
-                disabled
-                className="w-full p-2 border border-muted rounded-md bg-muted/20"
-              />
+          </Card>
+          
+          <Card premium className="p-8 relative overflow-hidden">
+            <div className="absolute top-0 right-0 w-40 h-40 bg-gradient-to-bl from-secondary/5 to-transparent rounded-bl-full -z-0"></div>
+            
+            <h4 className="text-lg font-semibold mb-6 flex items-center relative z-10">
+              <Shield className="w-5 h-5 mr-2 text-secondary" />
+              Insurance Information
+            </h4>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 relative z-10">
+              <div>
+                <label className="block text-sm font-medium mb-1">Insurance Provider</label>
+                <input
+                  type="text"
+                  name="insuranceProvider"
+                  value={profileForm.insuranceProvider}
+                  onChange={handleProfileChange}
+                  className="w-full p-2.5 border border-input rounded-md focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                  placeholder="BlueCross BlueShield, Aetna, Kaiser, etc."
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Insurance ID/Policy Number</label>
+                <input
+                  type="text"
+                  name="insuranceNumber"
+                  value={profileForm.insuranceNumber}
+                  onChange={handleProfileChange}
+                  className="w-full p-2.5 border border-input rounded-md focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200"
+                  placeholder="XXX-XXX-XXXX"
+                />
+              </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Date of Birth</label>
-              <input
-                type="date"
-                name="birthDate"
-                value={profileForm.birthDate}
-                onChange={handleProfileChange}
-                className="w-full p-2 border border-muted rounded-md"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Gender</label>
-              <select
-                name="gender"
-                value={profileForm.gender}
-                onChange={handleProfileChange}
-                className="w-full p-2 border border-muted rounded-md"
-              >
-                <option value="">Select Gender</option>
-                <option value="male">Male</option>
-                <option value="female">Female</option>
-                <option value="other">Other</option>
-              </select>
-            </div>
-            <div>
-              <label className="block text-sm font-medium mb-1">Blood Type</label>
-              <select
-                name="bloodType"
-                value={profileForm.bloodType}
-                onChange={handleProfileChange}
-                className="w-full p-2 border border-muted rounded-md"
-              >
-                <option value="">Select Blood Type</option>
-                <option value="A+">A+</option>
-                <option value="A-">A-</option>
-                <option value="B+">B+</option>
-                <option value="B-">B-</option>
-                <option value="AB+">AB+</option>
-                <option value="AB-">AB-</option>
-                <option value="O+">O+</option>
-                <option value="O-">O-</option>
-              </select>
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium mb-1">Address</label>
-              <input
-                type="text"
-                name="address"
-                value={profileForm.address}
-                onChange={handleProfileChange}
-                className="w-full p-2 border border-muted rounded-md"
-              />
-            </div>
-            <div className="md:col-span-2">
-              <label className="block text-sm font-medium mb-1">Allergies (comma-separated)</label>
-              <input
-                type="text"
-                name="allergies"
-                value={profileForm.allergies}
-                onChange={handleProfileChange}
-                placeholder="e.g. Peanuts, Penicillin, Latex"
-                className="w-full p-2 border border-muted rounded-md"
-              />
+          </Card>
+        </div>
+      ) : (
+        <div className="flex flex-col md:flex-row gap-8">
+          <div className="md:w-1/3 bg-background rounded-xl p-6 border border-border/40 shadow-sm hover:shadow-md transition-all duration-300">
+            <div className="flex flex-col items-center text-center mb-6">
+              <div className="relative mb-4">
+                {patientProfile?.photoURL ? (
+                  <img 
+                    src={patientProfile.photoURL} 
+                    alt={`${patientProfile.firstName} ${patientProfile.lastName}`}
+                    className="w-24 h-24 rounded-full object-cover border-4 border-background shadow-lg"
+                  />
+                ) : (
+                  <div className="w-24 h-24 bg-gradient-to-br from-primary to-secondary text-white rounded-full flex items-center justify-center shadow-lg">
+                    <User className="w-10 h-10" />
+                  </div>
+                )}
+                <div className="absolute bottom-0 right-0 w-6 h-6 bg-green-500 border-2 border-white rounded-full"></div>
+              </div>
+              <h3 className="text-2xl font-bold">
+                {patientProfile?.firstName} {patientProfile?.lastName}
+              </h3>
+              <p className="text-muted-foreground mt-1">{currentUser?.email}</p>
+              
+              <div className="mt-6 w-full">
+                <Button
+                  variant="outline"
+                  className="w-full border-primary/50 text-primary hover:bg-primary/5"
+                  onClick={() => setEditingProfile(true)}
+                >
+                  <Edit className="w-4 h-4 mr-2" />
+                  Edit Profile
+                </Button>
+              </div>
             </div>
             
-            <div className="md:col-span-2">
-              <h4 className="text-base font-medium mb-3">Emergency Contact</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium mb-1">Name</label>
-                  <input
-                    type="text"
-                    name="emergencyContactName"
-                    value={profileForm.emergencyContactName}
-                    onChange={handleProfileChange}
-                    className="w-full p-2 border border-muted rounded-md"
-                  />
+            <div className="space-y-4 mt-6 border-t pt-6">
+              {patientProfile?.phone && (
+                <div className="flex items-center">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mr-3 flex-shrink-0">
+                    <Phone className="w-4 h-4 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Phone</p>
+                    <p>{patientProfile.phone}</p>
+                  </div>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium mb-1">Relationship</label>
-                  <input
-                    type="text"
-                    name="emergencyContactRelationship"
-                    value={profileForm.emergencyContactRelationship}
-                    onChange={handleProfileChange}
-                    className="w-full p-2 border border-muted rounded-md"
-                  />
+              )}
+              
+              {patientProfile?.address && (
+                <div className="flex items-center">
+                  <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center mr-3 flex-shrink-0">
+                    <MapPin className="w-4 h-4 text-primary" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Address</p>
+                    <p>{patientProfile.address}</p>
+                  </div>
                 </div>
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium mb-1">Phone</label>
-                  <input
-                    type="tel"
-                    name="emergencyContactPhone"
-                    value={profileForm.emergencyContactPhone}
-                    onChange={handleProfileChange}
-                    className="w-full p-2 border border-muted rounded-md"
-                  />
+              )}
+              
+              {patientProfile?.emergencyContact?.name && (
+                <div className="flex items-center">
+                  <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center mr-3 flex-shrink-0">
+                    <Heart className="w-4 h-4 text-accent" />
+                  </div>
+                  <div>
+                    <p className="text-sm text-muted-foreground">Emergency Contact</p>
+                    <p>{patientProfile.emergencyContact.name} ({patientProfile.emergencyContact.relationship})</p>
+                    <p className="text-sm text-muted-foreground">{patientProfile.emergencyContact.phone}</p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+          
+          <div className="md:w-2/3">
+            <div className="bg-background rounded-xl p-6 border border-border/40 shadow-sm mb-6">
+              <h4 className="text-lg font-semibold mb-4 flex items-center">
+                <FileText className="w-5 h-5 mr-2 text-primary" />
+                Personal Information
+              </h4>
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <h5 className="text-sm font-medium text-muted-foreground mb-1">Date of Birth</h5>
+                  <p className="font-medium">{patientProfile?.birthDate || 'Not provided'}</p>
+                </div>
+                
+                <div>
+                  <h5 className="text-sm font-medium text-muted-foreground mb-1">Gender</h5>
+                  <p className="font-medium capitalize">{patientProfile?.gender || 'Not provided'}</p>
+                </div>
+                
+                <div>
+                  <h5 className="text-sm font-medium text-muted-foreground mb-1">Blood Type</h5>
+                  <p className="font-medium">{patientProfile?.bloodType || 'Not provided'}</p>
+                </div>
+                
+                <div>
+                  <h5 className="text-sm font-medium text-muted-foreground mb-1">Preferred Language</h5>
+                  <p className="font-medium capitalize">{patientProfile?.preferredLanguage || 'Not provided'}</p>
                 </div>
               </div>
             </div>
-          </div>
-        ) : (
-          <div className="space-y-6">
-            <div className="flex flex-col md:flex-row">
-              <div className="md:w-1/3 space-y-6">
-                <div className="flex items-center">
-                  <User className="w-16 h-16 text-primary p-3 bg-primary/10 rounded-full" />
-                  <div className="ml-4">
-                    <h4 className="text-xl font-semibold">
-                      {patientProfile?.firstName} {patientProfile?.lastName}
-                    </h4>
-                    <p className="text-muted-foreground">{currentUser?.email}</p>
-                  </div>
-                </div>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="bg-background rounded-xl p-6 border border-border/40 shadow-sm">
+                <h4 className="text-lg font-semibold mb-4 flex items-center">
+                  <Shield className="w-5 h-5 mr-2 text-primary" />
+                  Insurance Information
+                </h4>
                 
-                <div className="space-y-3">
-                  {patientProfile?.phone && (
-                    <div className="flex items-center">
-                      <Phone className="w-5 h-5 text-muted-foreground mr-3" />
-                      <span>{patientProfile.phone}</span>
-                    </div>
-                  )}
-                  {patientProfile?.address && (
-                    <div className="flex items-center">
-                      <MapPin className="w-5 h-5 text-muted-foreground mr-3" />
-                      <span>{patientProfile.address}</span>
-                    </div>
-                  )}
+                <div className="space-y-4">
+                  <div>
+                    <h5 className="text-sm font-medium text-muted-foreground mb-1">Provider</h5>
+                    <p className="font-medium">{patientProfile?.insuranceProvider || 'Not provided'}</p>
+                  </div>
+                  
+                  <div>
+                    <h5 className="text-sm font-medium text-muted-foreground mb-1">Policy Number</h5>
+                    <p className="font-medium">{patientProfile?.insuranceNumber || 'Not provided'}</p>
+                  </div>
                 </div>
               </div>
               
-              <div className="md:w-2/3 mt-6 md:mt-0 space-y-6">
-                <div className="grid grid-cols-2 gap-4">
-                  {patientProfile?.birthDate && (
-                    <div>
-                      <h5 className="text-sm font-medium text-muted-foreground">Date of Birth</h5>
-                      <p>{patientProfile.birthDate}</p>
-                    </div>
-                  )}
-                  {patientProfile?.gender && (
-                    <div>
-                      <h5 className="text-sm font-medium text-muted-foreground">Gender</h5>
-                      <p className="capitalize">{patientProfile.gender}</p>
-                    </div>
-                  )}
-                  {patientProfile?.bloodType && (
-                    <div>
-                      <h5 className="text-sm font-medium text-muted-foreground">Blood Type</h5>
-                      <p>{patientProfile.bloodType}</p>
-                    </div>
-                  )}
-                </div>
+              <div className="bg-background rounded-xl p-6 border border-border/40 shadow-sm">
+                <h4 className="text-lg font-semibold mb-4 flex items-center">
+                  <Activity className="w-5 h-5 mr-2 text-primary" />
+                  Health Information
+                </h4>
                 
-                {patientProfile?.allergies && patientProfile.allergies.length > 0 && (
+                <div className="space-y-4">
                   <div>
                     <h5 className="text-sm font-medium text-muted-foreground mb-1">Allergies</h5>
-                    <div className="flex flex-wrap gap-1">
-                      {patientProfile.allergies.map((allergy, index) => (
-                        <span 
-                          key={index}
-                          className="px-2 py-1 bg-red-100 text-red-800 rounded-full text-xs"
-                        >
-                          {allergy}
-                        </span>
-                      ))}
-                    </div>
+                    <p className="font-medium">{patientProfile?.allergies?.join(', ') || 'None'}</p>
                   </div>
-                )}
-                
-                {patientProfile?.emergencyContact && patientProfile.emergencyContact.name && (
+                  
                   <div>
-                    <h5 className="text-sm font-medium text-muted-foreground mb-2">Emergency Contact</h5>
-                    <div className="bg-muted/20 p-3 rounded-lg">
-                      <p className="font-medium">{patientProfile.emergencyContact.name}</p>
-                      <p className="text-sm text-muted-foreground">
-                        {patientProfile.emergencyContact.relationship}
-                      </p>
-                      <p className="text-sm">{patientProfile.emergencyContact.phone}</p>
-                    </div>
+                    <h5 className="text-sm font-medium text-muted-foreground mb-1">Medications</h5>
+                    <p className="font-medium">{patientProfile?.medications?.join(', ') || 'None'}</p>
                   </div>
-                )}
+                  
+                  <div>
+                    <h5 className="text-sm font-medium text-muted-foreground mb-1">Conditions</h5>
+                    <p className="font-medium">{patientProfile?.conditions?.join(', ') || 'None'}</p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-        )}
-      </Card>
+        </div>
+      )}
     </div>
   );
 
@@ -1415,7 +1590,13 @@ const PatientPortal = () => {
                   
                   <div className="flex items-center text-sm text-muted-foreground">
                     <Clock className="w-4 h-4 mr-1" />
-                    {new Date(notification.date.seconds ? notification.date.seconds * 1000 : notification.date).toLocaleString()}
+                    {notification.date && 
+                      new Date(
+                        typeof notification.date === 'object' && notification.date.seconds 
+                          ? notification.date.seconds * 1000 
+                          : notification.date
+                      ).toLocaleString()
+                    }
                   </div>
                 </div>
               </div>
@@ -1457,121 +1638,149 @@ const PatientPortal = () => {
     );
   }
 
+  // Rendering patient portal UI
   return (
-    <>
+    <div className="min-h-screen bg-background">
       <Navigation />
       
-      {/* Modern Hero Section with Consistent Design */}
-      <section className="relative py-16 overflow-hidden bg-gradient-to-br from-primary/90 via-primary/80 to-secondary">
-        {/* Layered background elements */}
+      {/* Enhanced Hero Section with luxury visuals and animated elements */}
+      <section className="pt-28 pb-16 bg-gradient-to-br from-primary via-primary/90 to-secondary relative overflow-hidden">
+        {/* Enhanced background decorative elements */}
         <div className="absolute inset-0 z-0 overflow-hidden">
-          {/* Background patterns */}
+          {/* Gradient overlay and pattern */}
           <div className="absolute inset-0 bg-[url('/src/assets/pattern-dot.svg')] opacity-10"></div>
           
-          {/* Animated blobs */}
-          <div className="absolute top-[20%] left-[10%] w-64 h-64 rounded-full bg-accent/20 mix-blend-overlay animate-blob animation-delay-2000"></div>
-          <div className="absolute bottom-[20%] right-[10%] w-72 h-72 rounded-full bg-secondary/20 mix-blend-overlay animate-blob"></div>
-          <div className="absolute top-[60%] right-[20%] w-40 h-40 rounded-full bg-white/10 mix-blend-overlay animate-blob animation-delay-4000"></div>
+          {/* Animated blobs with enhanced morphing effects */}
+          <div className="absolute top-[15%] left-[8%] w-72 h-72 rounded-full bg-accent/15 mix-blend-overlay animate-blob-morph animation-delay-2000"></div>
+          <div className="absolute bottom-[15%] right-[8%] w-80 h-80 rounded-full bg-secondary/20 mix-blend-overlay animate-blob-morph"></div>
+          <div className="absolute top-[55%] right-[18%] w-48 h-48 rounded-full bg-white/10 mix-blend-overlay animate-blob-morph animation-delay-4000"></div>
           
-          {/* Abstract shapes */}
-          <div className="absolute bottom-[30%] left-[20%] w-32 h-32 border-2 border-white/10 rounded-lg rotate-45 animate-float-slow"></div>
-          <div className="absolute top-[30%] right-[30%] w-24 h-24 border border-accent/20 rounded-full animate-pulse-slow"></div>
+          {/* Enhanced abstract shapes with better animations */}
+          <div className="absolute bottom-[28%] left-[18%] w-36 h-36 border-2 border-white/10 rounded-lg rotate-45 animate-float-slow"></div>
+          <div className="absolute top-[28%] right-[28%] w-28 h-28 border border-accent/20 rounded-full animate-pulse-glow"></div>
+          
+          {/* Additional decorative elements */}
+          <div className="absolute top-[40%] left-[25%] w-16 h-16 rounded-md bg-gradient-to-tr from-accent/10 to-transparent rotate-12 animate-float-slow animation-delay-3000"></div>
+          <div className="absolute bottom-[35%] right-[22%] w-20 h-20 border-2 border-dashed border-white/10 rounded-full animate-spin-slow"></div>
         </div>
         
         <div className="container-hospital relative z-10">
-          <div className="max-w-4xl mx-auto text-center text-white py-10">
-            <div className="inline-flex items-center px-4 py-2 rounded-full bg-white/10 backdrop-blur-md text-sm font-medium mb-6">
-              <div className="w-2 h-2 rounded-full bg-accent animate-pulse mr-2"></div>
-              <span>Your Health Dashboard</span>
+          <div className="max-w-5xl mx-auto text-center text-white py-10">
+            {/* Status badge with improved styling and personalization */}
+            <div className="inline-flex items-center px-5 py-2.5 rounded-full bg-white/15 backdrop-blur-sm text-sm font-medium mb-8 shadow-glow">
+              <div className="w-2.5 h-2.5 rounded-full bg-accent animate-pulse mr-2.5"></div>
+              <span>
+                {currentUser ? (
+                  <>Welcome back, <span className="font-semibold">{patientProfile?.firstName || currentUser.displayName?.split(' ')[0] || 'Patient'}</span></>
+                ) : 'Your Health Dashboard'}
+              </span>
             </div>
-            <h1 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight">
-              Welcome to Your <span className="text-gradient bg-gradient-to-r from-accent via-white to-accent bg-clip-text text-transparent">Patient Portal</span>
-            </h1>
-            <p className="text-xl text-white/90 max-w-2xl mx-auto">
-              Manage your appointments, view medical records, and access personalized healthcare services all in one place.
-            </p>
+            
+            {/* Main heading with enhanced typography and animation */}
+            <motion.h1 
+              className="text-4xl md:text-5xl lg:text-6xl font-bold mb-6 tracking-tight"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6 }}
+            >
+              Your Personal <span className="text-gradient bg-gradient-to-r from-accent via-white to-accent bg-clip-text text-transparent">Healthcare Hub</span>
+            </motion.h1>
+            
+            {/* Enhanced subheading with animation */}
+            <motion.p 
+              className="text-xl md:text-2xl text-white/90 max-w-3xl mx-auto leading-relaxed"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.2 }}
+            >
+              Seamlessly manage your health journey with personalized care, real-time updates, and secure access to your medical information.
+            </motion.p>
+            
+            {/* Quick stats cards with improved visual styling */}
+            <motion.div 
+              className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-12 max-w-4xl mx-auto"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.6, delay: 0.4 }}
+            >
+              {/* Upcoming appointment card */}
+              <motion.div 
+                className="bg-white/10 backdrop-blur-sm rounded-xl p-5 flex items-center space-x-4 hover:bg-white/15 transition-all duration-300 border border-white/5 shadow-glow"
+                whileHover={{ y: -5, boxShadow: "0 15px 30px rgba(0,0,0,0.1)" }}
+              >
+                <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                  <Calendar className="w-6 h-6 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-sm font-medium text-white/80">Upcoming</h3>
+                  <p className="text-white font-semibold">
+                    {appointments.length > 0 
+                      ? new Date(appointments[0].date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) 
+                      : 'No appointments'}
+                  </p>
+                </div>
+              </motion.div>
+              
+              {/* Records count card */}
+              <motion.div 
+                className="bg-white/10 backdrop-blur-sm rounded-xl p-5 flex items-center space-x-4 hover:bg-white/15 transition-all duration-300 border border-white/5 shadow-glow"
+                whileHover={{ y: -5, boxShadow: "0 15px 30px rgba(0,0,0,0.1)" }}
+              >
+                <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                  <FileText className="w-6 h-6 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-sm font-medium text-white/80">Medical Records</h3>
+                  <p className="text-white font-semibold">{medicalRecords.length} Records</p>
+                </div>
+              </motion.div>
+              
+              {/* Notifications card */}
+              <motion.div 
+                className="bg-white/10 backdrop-blur-sm rounded-xl p-5 flex items-center space-x-4 hover:bg-white/15 transition-all duration-300 border border-white/5 shadow-glow"
+                whileHover={{ y: -5, boxShadow: "0 15px 30px rgba(0,0,0,0.1)" }}
+              >
+                <div className="w-12 h-12 rounded-full bg-primary/20 flex items-center justify-center flex-shrink-0">
+                  <Bell className="w-6 h-6 text-white" />
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-sm font-medium text-white/80">Notifications</h3>
+                  <p className="text-white font-semibold">
+                    {notifications.filter(n => !n.read).length > 0 
+                      ? `${notifications.filter(n => !n.read).length} Unread` 
+                      : 'All caught up'}
+                  </p>
+                </div>
+              </motion.div>
+            </motion.div>
           </div>
         </div>
       </section>
       
-      <main className="container-hospital mx-auto px-4 py-10 min-h-screen">
-        <div className="mb-6">
-          <h2 className="text-2xl font-bold">Your Health Dashboard</h2>
-          <p className="text-muted-foreground mt-1">
-            Manage your healthcare journey with our comprehensive tools
-          </p>
+      {/* Main content section */}
+      <section className="container-hospital py-10">
+        <div className="mb-8">
+          <div className="flex overflow-x-auto space-x-4 pb-2">
+            {tabs.map((tab) => (
+              <button
+                key={tab.id}
+                className={`flex items-center px-4 py-2.5 rounded-lg transition-colors ${
+                  activeTab === tab.id
+                    ? "bg-primary text-white"
+                    : "hover:bg-muted"
+                }`}
+                onClick={() => setActiveTab(tab.id)}
+              >
+                <tab.icon className="w-5 h-5 mr-2" />
+                <span>{tab.label}</span>
+                {tab.id === "notifications" && hasUnreadNotifications && (
+                  <span className="w-2 h-2 bg-accent rounded-full ml-2"></span>
+                )}
+              </button>
+            ))}
+          </div>
         </div>
-
-        {/* Portal Navigation */}
-        <div className="flex overflow-x-auto pb-3 mb-8 border-b">
-          <button
-            className={`flex items-center px-4 py-2 mr-4 font-medium text-base whitespace-nowrap ${
-              activeTab === 'appointments'
-                ? 'text-primary border-b-2 border-primary'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-            onClick={() => setActiveTab('appointments')}
-          >
-            <Calendar className={`w-4 h-4 mr-2 ${activeTab === 'appointments' ? 'text-primary' : ''}`} />
-            Appointments
-          </button>
-          <button
-            className={`flex items-center px-4 py-2 mr-4 font-medium text-base whitespace-nowrap ${
-              activeTab === 'records'
-                ? 'text-primary border-b-2 border-primary'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-            onClick={() => setActiveTab('records')}
-          >
-            <FileBarChart className={`w-4 h-4 mr-2 ${activeTab === 'records' ? 'text-primary' : ''}`} />
-            Medical Records
-          </button>
-          <button
-            className={`flex items-center px-4 py-2 mr-4 font-medium text-base whitespace-nowrap ${
-              activeTab === 'prescriptions'
-                ? 'text-primary border-b-2 border-primary'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-            onClick={() => setActiveTab('prescriptions')}
-          >
-            <Pill className={`w-4 h-4 mr-2 ${activeTab === 'prescriptions' ? 'text-primary' : ''}`} />
-            Prescriptions
-          </button>
-          <button
-            className={`flex items-center px-4 py-2 mr-4 font-medium text-base whitespace-nowrap ${
-              activeTab === 'profile'
-                ? 'text-primary border-b-2 border-primary'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-            onClick={() => setActiveTab('profile')}
-          >
-            <UserCog className={`w-4 h-4 mr-2 ${activeTab === 'profile' ? 'text-primary' : ''}`} />
-            My Profile
-          </button>
-          <button
-            className={`flex items-center px-4 py-2 mr-4 font-medium text-base whitespace-nowrap ${
-              activeTab === 'notifications'
-                ? 'text-primary border-b-2 border-primary'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-            onClick={() => setActiveTab('notifications')}
-          >
-            <Bell className={`w-4 h-4 mr-2 ${activeTab === 'notifications' ? 'text-primary' : ''}`} />
-            Notifications
-          </button>
-          <button
-            className={`flex items-center px-4 py-2 mr-4 font-medium text-base whitespace-nowrap ${
-              activeTab === 'metrics'
-                ? 'text-primary border-b-2 border-primary'
-                : 'text-muted-foreground hover:text-foreground'
-            }`}
-            onClick={() => setActiveTab('metrics')}
-          >
-            <Activity className={`w-4 h-4 mr-2 ${activeTab === 'metrics' ? 'text-primary' : ''}`} />
-            Health Metrics
-          </button>
-        </div>
-
+        
         {/* Loading State */}
         {loading ? (
           <div className="flex justify-center items-center min-h-[400px]">
@@ -1588,9 +1797,9 @@ const PatientPortal = () => {
             {activeTab === 'metrics' && renderHealthMetrics()}
           </>
         )}
-      </main>
+      </section>
       <Footer />
-    </>
+    </div>
   );
 };
 

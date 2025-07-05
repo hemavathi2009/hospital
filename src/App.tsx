@@ -9,7 +9,11 @@ import Services from "./pages/Services";
 import Appointments from "./pages/Appointments";
 import AppointmentBooking from "./pages/AppointmentBooking";
 import Contact from "./pages/Contact";
+import Doctors from "./pages/Doctors";
+import PatientPortal from "./pages/PatientPortal";
+import DoctorPortal from "./pages/DoctorPortal";
 import SignIn from "./pages/SignIn";
+import PatientSignUp from "./pages/PatientSignUp";
 import AdminDashboard from "./pages/admin/Dashboard";
 import AdminLogin from "./pages/admin/Login";
 import NotFound from "./pages/NotFound";
@@ -30,10 +34,15 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/services" element={<Services />} />
+            <Route path="/doctors" element={<Doctors />} />
             <Route path="/appointments" element={<Appointments />} />
             <Route path="/appointment-booking" element={<AppointmentBooking />} />
             <Route path="/contact" element={<Contact />} />
+            <Route path="/patient-portal" element={<PatientPortal />} />
+            <Route path="/doctor-portal" element={<DoctorPortal />} />
             <Route path="/signin" element={<SignIn />} />
+            <Route path="/patient-signup" element={<PatientSignUp />} />
+            <Route path="/signup" element={<PatientSignUp />} />
             <Route path="/admin/login" element={<AdminLogin />} />
             <Route path="/admin" element={<AdminDashboard />} />
             <Route path="/admin/services" element={<ServicesManagement />} />

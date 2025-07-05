@@ -63,14 +63,13 @@ const AccessCodeLogin: React.FC<AccessCodeLoginProps> = ({ onSuccess }) => {
           const tempPassword = `Temp${accessCode}!`;
           await signInWithEmailAndPassword(auth, patientData.email, tempPassword);
           
-          // No need to mark the code as used since codes are now permanent
-          
           toast.success('Successfully signed in!');
           
           if (onSuccess) {
             onSuccess();
           } else {
-            navigate('/');
+            // Use window.location for a full page reload to ensure proper initialization
+            window.location.href = '/patient-portal';
           }
         } catch (error) {
           console.error('Error signing in with access code:', error);
@@ -92,15 +91,14 @@ const AccessCodeLogin: React.FC<AccessCodeLoginProps> = ({ onSuccess }) => {
             updatedAt: new Date()
           });
           
-          // No need to mark the code as used since codes are now permanent
-          
           toast.success('Account created successfully!');
           toast.info('Please update your password in your profile settings.');
           
           if (onSuccess) {
             onSuccess();
           } else {
-            navigate('/');
+            // Use window.location for a full page reload to ensure proper initialization
+            window.location.href = '/patient-portal';
           }
         } catch (error) {
           console.error('Error creating account with access code:', error);
@@ -119,7 +117,7 @@ const AccessCodeLogin: React.FC<AccessCodeLoginProps> = ({ onSuccess }) => {
     <Card premium className="p-6">
       <h3 className="text-xl font-semibold mb-4">Access with Code</h3>
       <p className="text-sm text-muted-foreground mb-4">
-        Enter the permanent access code provided by your healthcare provider to access your patient account.
+        Enter the permanent access code provided by your healthcare provider to access your patient portal.
       </p>
       
       <form onSubmit={handleAccessCodeSubmit}>
@@ -154,7 +152,7 @@ const AccessCodeLogin: React.FC<AccessCodeLoginProps> = ({ onSuccess }) => {
             </div>
           ) : (
             <div className="flex items-center justify-center">
-              Access Account <ArrowRight className="ml-2 w-4 h-4" />
+              Access Portal <ArrowRight className="ml-2 w-4 h-4" />
             </div>
           )}
         </Button>
