@@ -224,126 +224,99 @@ const Contact = () => {
     <div className="min-h-screen bg-background">
       <Navigation />
       
-      {/* Hero Section with Background Image */}
-      <section className="relative section-padding">
-        <div 
-          className="absolute inset-0 bg-cover bg-center"
-          style={{
-            backgroundImage: `linear-gradient(rgba(59, 130, 246, 0.8), rgba(16, 185, 129, 0.8)), url('https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=1920&h=600&fit=crop')`
-          }}
-        ></div>
-        <motion.div 
-          className="relative z-10 container-hospital"
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, ease: "easeOut" }}
-        >
-          <div className="text-center fade-in-up text-white">
-            <motion.h1 
-              className="text-5xl lg:text-6xl font-bold mb-6"
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2, duration: 0.8 }}
-            >
-              Contact <span className="text-gradient bg-gradient-to-r from-accent to-white bg-clip-text text-transparent">Us</span>
-            </motion.h1>
-            <motion.p 
-              className="text-xl opacity-90 max-w-3xl mx-auto leading-relaxed"
-              initial={{ opacity: 0, y: 30 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.4, duration: 0.8 }}
-            >
-              Get in touch with our healthcare team. We're here to answer your questions 
-              and help you with your medical needs.
-            </motion.p>
-          </div>
-        </motion.div>
-      </section>
-
-      {/* Contact Information */}
-      <section className="section-padding">
-        <div className="container-hospital">
+      {/* Modern Hero Section with Consistent Design */}
+      <section className="relative min-h-[60vh] flex items-center justify-center overflow-hidden">
+        {/* Multi-layered background with enhanced depth */}
+        <div className="absolute inset-0 w-full h-full">
+          {/* Base image with modern hospital building */}
+          <img
+            src="https://images.unsplash.com/photo-1538108149393-fbbd81895907?w=1920&h=1080&fit=crop&q=80"
+            alt="Modern hospital building"
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+          
+          {/* Gradient overlays */}
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/95 via-primary/85 to-secondary/90 z-10"></div>
+          <div className="absolute inset-0 bg-[url('/src/assets/pattern-dot.svg')] opacity-10 z-[11]"></div>
+          
+          {/* Animated accent elements */}
+          <div className="absolute top-[20%] left-[10%] w-[500px] h-[500px] rounded-full bg-accent/10 mix-blend-overlay animate-blob animation-delay-2000 z-[12]"></div>
+          <div className="absolute bottom-[20%] right-[10%] w-[600px] h-[600px] rounded-full bg-secondary/10 mix-blend-overlay animate-blob z-[12]"></div>
+          <div className="absolute top-[60%] right-[20%] w-[400px] h-[400px] rounded-full bg-primary-light/10 mix-blend-overlay animate-blob animation-delay-4000 z-[12]"></div>
+          
+          {/* Floating geometric shapes */}
           <motion.div 
-            className="grid md:grid-cols-2 lg:grid-cols-4 gap-8 mb-16"
+            className="absolute top-[20%] right-[20%] w-24 h-24 border-2 border-white/10 rounded-lg z-[13]"
+            animate={{ 
+              rotate: 360,
+              y: [0, 15, 0],
+            }}
+            transition={{ 
+              rotate: { duration: 20, repeat: Infinity, ease: "linear" },
+              y: { duration: 8, repeat: Infinity, ease: "easeInOut" }
+            }}
+          ></motion.div>
+          
+          {/* Particle effects */}
+          <div className="absolute inset-0 z-[14]">
+            {[...Array(20)].map((_, i) => (
+              <motion.div
+                key={i}
+                className="absolute w-1 h-1 bg-white/20 rounded-full"
+                style={{
+                  top: `${Math.random() * 100}%`,
+                  left: `${Math.random() * 100}%`,
+                }}
+                animate={{
+                  opacity: [0, 1, 0],
+                  scale: [0, 1.5, 0],
+                }}
+                transition={{
+                  duration: Math.random() * 3 + 2,
+                  repeat: Infinity,
+                  delay: Math.random() * 5,
+                }}
+              />
+            ))}
+          </div>
+        </div>
+        
+        {/* Content */}
+        <div className="container-hospital relative z-20 px-6 py-16 md:py-24 max-w-7xl mx-auto">
+          <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, staggerChildren: 0.1 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+            className="text-center max-w-4xl mx-auto"
           >
-            <motion.div 
+            <motion.div
               initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.1 }}
-              viewport={{ once: true }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2, duration: 0.6 }}
             >
-              <Card premium className="p-6 text-center h-full">
-                <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4 transition-all duration-300 hover:bg-primary/20 group">
-                  <Phone className="w-8 h-8 text-primary transition-all duration-300 group-hover:scale-110" />
+              <div className="inline-flex items-center px-5 py-3 rounded-full bg-white/15 backdrop-blur-lg text-base font-medium text-white shadow-glow mb-6">
+                <div className="relative mr-3">
+                  <div className="w-3 h-3 rounded-full bg-accent animate-pulse-soft"></div>
+                  <div className="absolute -inset-1 rounded-full bg-accent/30 animate-ripple"></div>
                 </div>
-                <h3 className="text-lg font-semibold text-foreground mb-2">Phone</h3>
-                <a 
-                  href="tel:+15551234567" 
-                  className="text-primary hover:underline transition-all hover:text-primary/80"
-                >
-                  +1 (555) 123-4567
-                </a>
-                <p className="text-sm text-muted-foreground mt-1">24/7 Available</p>
-              </Card>
-            </motion.div>
-
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.2 }}
-              viewport={{ once: true }}
-            >
-              <Card premium className="p-6 text-center h-full">
-                <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4 transition-all duration-300 hover:bg-primary/20 group">
-                  <Mail className="w-8 h-8 text-primary transition-all duration-300 group-hover:scale-110" />
-                </div>
-                <h3 className="text-lg font-semibold text-foreground mb-2">Email</h3>
-                <a 
-                  href="mailto:contact@medicare-plus.com" 
-                  className="text-primary hover:underline transition-all hover:text-primary/80"
-                >
-                  contact@medicare-plus.com
-                </a>
-                <p className="text-sm text-muted-foreground mt-1">Response within 24h</p>
-              </Card>
-            </motion.div>
-
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.3 }}
-              viewport={{ once: true }}
-            >
-              <Card premium className="p-6 text-center h-full">
-                <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4 transition-all duration-300 hover:bg-primary/20 group">
-                  <MapPin className="w-8 h-8 text-primary transition-all duration-300 group-hover:scale-110" />
-                </div>
-                <h3 className="text-lg font-semibold text-foreground mb-2">Address</h3>
-                <p className="text-muted-foreground">123 Medical Center Drive</p>
-                <p className="text-sm text-muted-foreground mt-1">Downtown, NY 10001</p>
-              </Card>
-            </motion.div>
-
-            <motion.div 
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5, delay: 0.4 }}
-              viewport={{ once: true }}
-            >
-              <Card premium className="p-6 text-center h-full">
-                <div className="w-16 h-16 rounded-2xl bg-primary/10 flex items-center justify-center mx-auto mb-4 transition-all duration-300 hover:bg-primary/20 group">
-                  <Clock className="w-8 h-8 text-primary transition-all duration-300 group-hover:scale-110" />
-                </div>
-                <h3 className="text-lg font-semibold text-foreground mb-2">Hours</h3>
-                <p className="text-muted-foreground">Mon-Fri: 8AM-8PM</p>
-                <p className="text-sm text-muted-foreground mt-1">Emergency: 24/7</p>
-              </Card>
+                We're Here To Help
+              </div>
+              
+              <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight">
+                Contact <span className="text-gradient bg-gradient-to-r from-accent to-white bg-clip-text text-transparent">Us</span>
+              </h1>
+              <p className="text-xl md:text-2xl text-white/90 max-w-3xl mx-auto mb-10 leading-relaxed backdrop-blur-sm bg-white/5 p-5 rounded-xl border border-white/10">
+                Reach out to our dedicated team for appointments, inquiries, or feedback. We're here to help you navigate your healthcare journey.
+              </p>
+              
             </motion.div>
           </motion.div>
+        </div>
+      </section>
 
+      {/* Main Content */}
+      <section className="section-padding">
+        <div className="container-hospital">
           <div className="grid lg:grid-cols-2 gap-16 items-start">
             {/* Contact Form */}
             <motion.div
@@ -766,57 +739,11 @@ const Contact = () => {
                   <Button 
                     variant="primary" 
                     className="w-full flex items-center justify-center gap-2"
-                    onClick={() => window.location.href = '/appointment'}
+                    onClick={() => window.location.href = '/appointment-booking'}
                   >
                     <Calendar className="w-5 h-5" />
                     Schedule an Appointment
                   </Button>
-                </div>
-              </Card>
-              
-              {/* New Operating Hours Card */}
-              <Card premium className="p-6">
-                <h3 className="text-xl font-semibold text-foreground mb-4">Hospital Hours</h3>
-                <div className="space-y-3">
-                  <div className="flex justify-between items-center border-b border-border pb-2">
-                    <div className="flex items-center">
-                      <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center mr-3">
-                        <Clock className="w-4 h-4 text-blue-600" />
-                      </div>
-                      <span className="font-medium">Monday - Friday</span>
-                    </div>
-                    <span>8:00 AM - 8:00 PM</span>
-                  </div>
-                  
-                  <div className="flex justify-between items-center border-b border-border pb-2">
-                    <div className="flex items-center">
-                      <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center mr-3">
-                        <Clock className="w-4 h-4 text-blue-600" />
-                      </div>
-                      <span className="font-medium">Saturday</span>
-                    </div>
-                    <span>8:00 AM - 6:00 PM</span>
-                  </div>
-                  
-                  <div className="flex justify-between items-center border-b border-border pb-2">
-                    <div className="flex items-center">
-                      <div className="w-8 h-8 rounded-full bg-blue-50 flex items-center justify-center mr-3">
-                        <Clock className="w-4 h-4 text-blue-600" />
-                      </div>
-                      <span className="font-medium">Sunday</span>
-                    </div>
-                    <span>10:00 AM - 4:00 PM</span>
-                  </div>
-                  
-                  <div className="flex justify-between items-center pt-2">
-                    <div className="flex items-center">
-                      <div className="w-8 h-8 rounded-full bg-red-50 flex items-center justify-center mr-3">
-                        <Phone className="w-4 h-4 text-red-600" />
-                      </div>
-                      <span className="font-medium">Emergency</span>
-                    </div>
-                    <span className="font-semibold text-primary">24/7 Available</span>
-                  </div>
                 </div>
               </Card>
             </motion.div>

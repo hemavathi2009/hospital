@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion, useScroll, useTransform, AnimatePresence } from 'framer-motion';
 import Navigation from '../components/organisms/Navigation';
 import Button from '../components/atoms/Button';
@@ -40,6 +40,9 @@ import { TypeAnimation } from 'react-type-animation';
 import Footer from '../components/organisms/Footer';
 
 const Index = () => {
+  // Router navigation
+  const navigate = useNavigate();
+
   // Refs for scroll animations
   const heroRef = useRef(null);
   const testimonialsRef = useRef(null);
@@ -254,169 +257,195 @@ const Index = () => {
     setShowDoctorModal(false);
     document.body.style.overflow = 'auto'; // Restore scrolling
   };
-
+  
   return (
-    <div className="min-h-screen bg-background overflow-hidden">
-      <Navigation />
-      
-      {/* Hero Section with Video Background */}
-      <section 
-        ref={heroRef}
-        className="relative min-h-screen flex items-center justify-center overflow-hidden"
-      >
-        {/* Video Background */}
-        <div className="absolute inset-0 w-full h-full">
-          <div className="absolute inset-0 bg-gradient-to-r from-primary/80 via-primary/70 to-secondary/80 z-10"></div>
-          <video
-            autoPlay
-            loop
-            muted
-            playsInline
-            className="absolute inset-0 w-full h-full object-cover"
-          >
-            <source src="https://player.vimeo.com/external/466464198.sd.mp4?s=32f92bfa7dc5c7e0c2c6da0f74fa6c0de03d38f0&profile_id=164&oauth2_token_id=57447761" type="video/mp4" />
-            {/* Fallback for browsers that don't support video */}
-            <img 
-              src="https://images.unsplash.com/photo-1551076805-e1869033e561?w=1920&h=1080&fit=crop" 
-              alt="Medical facility"
-              className="absolute inset-0 w-full h-full object-cover"
-            />
-          </video>
-        </div>
+    <>
+      <div className="min-h-screen bg-background overflow-hidden">
+        <Navigation />
         
-        {/* Hero Content */}
-        <motion.div 
-          style={{ y: heroY }} 
-          className="relative z-20 container-hospital section-padding text-white"
+        {/* Hero Section with Video Background and Modern Design */}
+        <section 
+          ref={heroRef}
+          className="relative min-h-screen flex items-center justify-center overflow-hidden"
         >
-          <div className="grid lg:grid-cols-2 gap-12 items-center">
-            <motion.div 
-              initial={{ opacity: 0, y: 50 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.8 }}
-              className="space-y-8"
-            >
-              <div className="inline-flex items-center px-4 py-2 rounded-full bg-white/10 backdrop-blur-md text-sm font-medium">
-                <div className="w-2 h-2 rounded-full bg-accent mr-2 animate-pulse-soft"></div>
-                Excellence in Healthcare
-              </div>
-              
-              <h1 className="text-5xl lg:text-7xl font-bold leading-tight">
-                Your Health,{" "}
-                <span className="text-gradient bg-gradient-to-r from-accent to-white bg-clip-text text-transparent">
-                  <TypeAnimation 
-                    sequence={[
-                      'Our Priority',
-                      2000,
-                      'Our Passion',
-                      2000,
-                      'Our Promise',
-                      2000
-                    ]}
-                    wrapper="span"
-                    speed={50}
-                    repeat={Infinity}
-                  />
-                </span>
-              </h1>
-              
-              <p className="text-xl text-white/80 leading-relaxed max-w-2xl">
-                Experience world-class healthcare with our team of expert physicians, 
-                state-of-the-art facilities, and personalized care that puts you first.
-              </p>
-              
-              {/* CTA Buttons */}
-              <div className="flex flex-col sm:flex-row gap-4 pt-4">
-                <Link to="/appointment-booking">
+          {/* Video Background with Enhanced Layering */}
+          <div className="absolute inset-0 w-full h-full">
+            {/* Base gradient layer for better text contrast */}
+            <div className="absolute inset-0 bg-gradient-to-br from-primary/95 via-primary/85 to-secondary/90 z-20"></div>
+            
+            {/* Modern geometric pattern overlay */}
+            <div className="absolute inset-0 bg-[url('/src/assets/pattern-dot.svg')] opacity-10 z-30"></div>
+            
+            {/* Enhanced animated elements */}
+            <div className="absolute top-[20%] left-[10%] w-64 h-64 rounded-full bg-accent/20 mix-blend-overlay animate-blob animation-delay-2000 z-30"></div>
+            <div className="absolute bottom-[20%] right-[10%] w-72 h-72 rounded-full bg-secondary/20 mix-blend-overlay animate-blob z-30"></div>
+            <div className="absolute top-[60%] right-[20%] w-40 h-40 rounded-full bg-white/10 mix-blend-overlay animate-blob animation-delay-4000 z-30"></div>
+            
+            {/* Abstract shapes */}
+            <div className="absolute bottom-[30%] left-[20%] w-32 h-32 border-2 border-white/10 rounded-lg rotate-45 animate-float-slow z-30"></div>
+            <div className="absolute top-[30%] right-[30%] w-24 h-24 border border-accent/20 rounded-full animate-pulse-slow z-30"></div>
+            
+            {/* Video with overlay */}
+            <div className="absolute inset-0 z-10">
+              <video
+                autoPlay
+                loop
+                muted
+                playsInline
+                className="absolute inset-0 w-full h-full object-cover"
+              >
+                <source src="https://player.vimeo.com/progressive_redirect/playback/499921599/rendition/720p/file.mp4?loc=external&signature=3d5f15fea5ee324f4f2e9549c95c9b827a5ea0b2d4e41c1d9b7ac49e4a0e0efa" type="video/mp4" />
+                {/* Fallback for browsers that don't support video */}
+                <img 
+                  src="https://images.unsplash.com/photo-1631217868264-e5b90bb7e133?w=1920&h=1080&fit=crop" 
+                  alt="Advanced medical facility"
+                  className="absolute inset-0 w-full h-full object-cover"
+                />
+              </video>
+            </div>
+          </div>
+          
+          {/* Hero Content with Modern Design */}
+          <motion.div 
+            style={{ y: heroY }} 
+            className="relative z-40 container-hospital section-padding text-white"
+          >
+            <div className="grid lg:grid-cols-2 gap-12 items-center">
+              <motion.div 
+                initial={{ opacity: 0, y: 50 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.8 }}
+                className="space-y-8"
+              >
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  transition={{ delay: 0.2, duration: 0.5 }}
+                  className="inline-flex items-center px-5 py-3 rounded-full bg-white/15 backdrop-blur-lg text-sm font-medium shadow-lg border border-white/10"
+                >
+                  <div className="relative mr-2">
+                    <div className="w-2 h-2 rounded-full bg-accent animate-pulse"></div>
+                    <div className="absolute -inset-1 rounded-full bg-accent/30 animate-ripple"></div>
+                  </div>
+                  <span className="text-white/90">Next-Generation Healthcare</span>
+                </motion.div>
+                
+                <motion.h1 
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3, duration: 0.8 }}
+                  className="text-5xl lg:text-7xl font-bold text-white leading-tight tracking-tight"
+                >
+                  Redefining 
+                  <span className="relative">
+                    <span className="block text-gradient bg-gradient-to-r from-accent via-white to-accent bg-clip-text text-transparent">
+                      Healthcare Excellence
+                    </span>
+                    <span className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-accent/0 via-accent/70 to-accent/0"></span>
+                  </span>
+                </motion.h1>
+                
+                <motion.p 
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.4, duration: 0.8 }}
+                  className="text-xl text-white/90 leading-relaxed max-w-2xl"
+                >
+                  Experience revolutionary medical care with our team of world-renowned specialists,
+                  breakthrough technologies, and patient-centered approach that redefines standards.
+                </motion.p>
+                
+                <motion.div
+                  initial={{ opacity: 0, y: 30 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.5, duration: 0.8 }}
+                  className="flex flex-col sm:flex-row gap-4 pt-4"
+                >
                   <Button 
                     variant="accent" 
                     size="xl" 
-                    className="shadow-lg hover:shadow-xl"
+                    onClick={() => navigate('/appointment-booking')}
+                    className="shadow-xl hover:shadow-2xl transform hover:-translate-y-1 transition-all duration-300"
                   >
                     <Calendar className="w-5 h-5 mr-2" />
-                    Book Appointment
+                    Schedule Consultation
                   </Button>
-                </Link>
-                
-                <Button 
-                  variant="outline" 
-                  size="xl"
-                  onClick={() => handleScrollTo(testimonialsRef)}
-                  className="border-white text-white hover:bg-white hover:text-primary shadow-lg"
-                >
-                  <Users className="w-5 h-5 mr-2" />
-                  Meet Our Doctors
-                </Button>
-              </div>
-            </motion.div>
 
-            {/* Hero Image */}
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
-              className="relative hidden lg:block"
-            >
-              <div className="w-full h-[600px] rounded-3xl overflow-hidden shadow-2xl">
-                <img 
-                  src="https://images.unsplash.com/photo-1551076805-e1869033e561?w=800&h=600&fit=crop" 
-                  alt="Professional medical team"
-                  className="w-full h-full object-cover"
-                />
-              </div>
-              
-              {/* Floating cards */}
+                  <Button 
+                    variant="outline" 
+                    size="xl"
+                    onClick={() => handleScrollTo(testimonialsRef)}
+                    className="border-white/70 text-white hover:bg-white/10 hover:border-white shadow-lg"
+                  >
+                    <Users className="w-5 h-5 mr-2" />
+                    Meet Our Specialists
+                  </Button>
+                </motion.div>
+              </motion.div>
+
+              {/* Hero Visual */}
               <motion.div 
-                initial={{ opacity: 0, x: -30 }}
+                initial={{ opacity: 0, x: 50 }}
                 animate={{ opacity: 1, x: 0 }}
-                transition={{ duration: 0.6, delay: 0.6 }}
-                className="absolute -top-8 -left-8 bg-white rounded-2xl p-4 shadow-2xl"
+                transition={{ delay: 0.6, duration: 1 }}
+                className="relative hidden lg:block"
               >
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center">
-                    <Shield className="w-5 h-5 text-success" />
+                <div className="relative">
+                  {/* Main image with backdrop filter card */}
+                  <div className="bg-white/10 backdrop-blur-md p-3 rounded-3xl shadow-2xl overflow-hidden">
+                    <div className="w-full h-[500px] rounded-2xl overflow-hidden">
+                      <img 
+                        src="https://images.unsplash.com/photo-1631217868264-e5b90bb7e133?w=700&h=500&fit=crop" 
+                        alt="State-of-the-art medical care"
+                        className="w-full h-full object-cover"
+                      />
+                    </div>
+                    
+                    {/* Decorative border */}
+                    <div className="absolute inset-0 border border-white/20 rounded-3xl pointer-events-none"></div>
                   </div>
-                  <div>
-                    <div className="font-semibold text-foreground">Certified Excellence</div>
-                    <div className="text-xs text-muted-foreground">Joint Commission Accredited</div>
-                  </div>
-                </div>
-              </motion.div>
 
-              <motion.div 
-                initial={{ opacity: 0, y: 30 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ duration: 0.6, delay: 0.9 }}
-                className="absolute -bottom-8 right-12 bg-white rounded-2xl p-4 shadow-2xl"
-              >
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-primary">4.9</div>
-                  <div className="text-xs text-muted-foreground">Patient Satisfaction</div>
-                  <div className="flex justify-center mt-1">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="w-3 h-3 text-yellow-500 fill-current" />
-                    ))}
-                  </div>
+                  {/* Animated stat cards */}
+                  <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.8, duration: 0.5 }}
+                    className="absolute -top-4 -left-4 bg-white rounded-2xl p-4 shadow-2xl"
+                  >
+                    <div className="flex items-center space-x-3">
+                      <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center">
+                        <Award className="w-5 h-5 text-accent" />
+                      </div>
+                      <div>
+                        <div className="font-semibold text-sm">Top Rated</div>
+                        <div className="text-xs text-muted-foreground">#1 in Patient Care</div>
+                      </div>
+                    </div>
+                  </motion.div>
+
+                  <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: 0.9, duration: 0.5 }}
+                    className="absolute -bottom-4 -right-4 bg-white rounded-2xl p-4 shadow-2xl"
+                  >
+                    <div className="text-center">
+                      <div className="text-2xl font-bold text-primary">98%</div>
+                      <div className="text-xs text-muted-foreground">Patient Satisfaction</div>
+                      <div className="flex justify-center gap-1 mt-1">
+                        {[...Array(5)].map((_, i) => (
+                          <div key={i} className="text-accent">
+                            <Star className="w-3 h-3 fill-current" />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  </motion.div>
                 </div>
               </motion.div>
-            </motion.div>
-          </div>
-        </motion.div>
-        
-        {/* Scroll indicator */}
-        <motion.div 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.5, duration: 1 }}
-          className="absolute bottom-10 left-1/2 transform -translate-x-1/2 z-20 cursor-pointer"
-          onClick={() => window.scrollTo({ top: window.innerHeight, behavior: 'smooth' })}
-        >
-          <div className="flex flex-col items-center text-white">
-            <span className="text-sm font-medium mb-2">Scroll to explore</span>
-            <ChevronDown className="w-6 h-6 animate-bounce" />
-          </div>
-        </motion.div>
-      </section>
+            </div>
+          </motion.div>
+        </section>
 
       {/* Stats Section with Counter Animation */}
       <section className="py-16 bg-gradient-to-br from-primary/5 via-white to-secondary/5">
@@ -859,111 +888,6 @@ const Index = () => {
         </div>
       </section>
       
-      {/* Portal Access Section */}
-      <section className="py-20 bg-gradient-to-br from-primary/5 via-white to-secondary/5">
-        <div className="container-hospital">
-          <motion.div 
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <h2 className="text-4xl lg:text-5xl font-bold text-foreground mb-6">
-              Access Your <span className="text-gradient">Health Portal</span>
-            </h2>
-            <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-              Seamlessly manage your healthcare journey with our dedicated portals for patients and healthcare professionals.
-            </p>
-          </motion.div>
-
-          <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-            {/* Patient Portal Card */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.1 }}
-            >
-              <Card premium hover className="h-full flex flex-col">
-                <div className="p-8 flex-1">
-                  <div className="w-16 h-16 rounded-2xl bg-blue-100 flex items-center justify-center mb-6">
-                    <User className="w-8 h-8 text-primary" />
-                  </div>
-                  <h3 className="text-2xl font-bold mb-4">Patient Portal</h3>
-                  <p className="text-muted-foreground mb-6">
-                    Access your medical records, upcoming appointments, prescriptions, and lab results. Manage your healthcare journey from anywhere, anytime.
-                  </p>
-                  <ul className="space-y-3 mb-8">
-                    <li className="flex items-start">
-                      <CheckCircle className="w-5 h-5 text-primary mr-2 mt-0.5 flex-shrink-0" />
-                      <span>View and manage your appointments</span>
-                    </li>
-                    <li className="flex items-start">
-                      <CheckCircle className="w-5 h-5 text-primary mr-2 mt-0.5 flex-shrink-0" />
-                      <span>Access your medical records and prescriptions</span>
-                    </li>
-                    <li className="flex items-start">
-                      <CheckCircle className="w-5 h-5 text-primary mr-2 mt-0.5 flex-shrink-0" />
-                      <span>Track your health metrics and progress</span>
-                    </li>
-                  </ul>
-                </div>
-                <div className="p-8 pt-0 mt-auto">
-                  <Link to="/patient-portal">
-                    <Button variant="primary" size="lg" className="w-full">
-                      <User className="w-4 h-4 mr-2" />
-                      Access Patient Portal
-                    </Button>
-                  </Link>
-                </div>
-              </Card>
-            </motion.div>
-
-            {/* Doctor Portal Card */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.2 }}
-            >
-              <Card premium hover className="h-full flex flex-col">
-                <div className="p-8 flex-1">
-                  <div className="w-16 h-16 rounded-2xl bg-amber-100 flex items-center justify-center mb-6">
-                    <Stethoscope className="w-8 h-8 text-secondary" />
-                  </div>
-                  <h3 className="text-2xl font-bold mb-4">Doctor Portal</h3>
-                  <p className="text-muted-foreground mb-6">
-                    Designed for healthcare professionals to manage patient appointments, access medical records, and update treatment plans efficiently.
-                  </p>
-                  <ul className="space-y-3 mb-8">
-                    <li className="flex items-start">
-                      <CheckCircle className="w-5 h-5 text-secondary mr-2 mt-0.5 flex-shrink-0" />
-                      <span>Manage your patient appointments</span>
-                    </li>
-                    <li className="flex items-start">
-                      <CheckCircle className="w-5 h-5 text-secondary mr-2 mt-0.5 flex-shrink-0" />
-                      <span>Update patient records and prescriptions</span>
-                    </li>
-                    <li className="flex items-start">
-                      <CheckCircle className="w-5 h-5 text-secondary mr-2 mt-0.5 flex-shrink-0" />
-                      <span>Collaborate with other healthcare professionals</span>
-                    </li>
-                  </ul>
-                </div>
-                <div className="p-8 pt-0 mt-auto">
-                  <Link to="/doctor-portal">
-                    <Button variant="secondary" size="lg" className="w-full">
-                      <Stethoscope className="w-4 h-4 mr-2" />
-                      Access Doctor Portal
-                    </Button>
-                  </Link>
-                </div>
-              </Card>
-            </motion.div>
-          </div>
-        </div>
-      </section>
-      
       {/* Testimonials Section */}
       <section className="py-20 bg-gradient-to-br from-primary/5 to-secondary/5">
         <div className="container-hospital">
@@ -1051,111 +975,6 @@ const Index = () => {
               <CarouselNext className="static" />
             </div>
           </Carousel>
-        </div>
-      </section>
-      
-      {/* Portal Access Section */}
-      <section className="py-20 bg-gradient-to-br from-primary/5 via-white to-secondary/5">
-        <div className="container-hospital">
-          <motion.div 
-            initial={{ opacity: 0 }}
-            whileInView={{ opacity: 1 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <h2 className="text-4xl lg:text-5xl font-bold text-foreground mb-6">
-              Access Your <span className="text-gradient">Health Portal</span>
-            </h2>
-            <p className="text-xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-              Seamlessly manage your healthcare journey with our dedicated portals for patients and healthcare professionals.
-            </p>
-          </motion.div>
-
-          <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
-            {/* Patient Portal Card */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.1 }}
-            >
-              <Card premium hover className="h-full flex flex-col">
-                <div className="p-8 flex-1">
-                  <div className="w-16 h-16 rounded-2xl bg-blue-100 flex items-center justify-center mb-6">
-                    <User className="w-8 h-8 text-primary" />
-                  </div>
-                  <h3 className="text-2xl font-bold mb-4">Patient Portal</h3>
-                  <p className="text-muted-foreground mb-6">
-                    Access your medical records, upcoming appointments, prescriptions, and lab results. Manage your healthcare journey from anywhere, anytime.
-                  </p>
-                  <ul className="space-y-3 mb-8">
-                    <li className="flex items-start">
-                      <CheckCircle className="w-5 h-5 text-primary mr-2 mt-0.5 flex-shrink-0" />
-                      <span>View and manage your appointments</span>
-                    </li>
-                    <li className="flex items-start">
-                      <CheckCircle className="w-5 h-5 text-primary mr-2 mt-0.5 flex-shrink-0" />
-                      <span>Access your medical records and prescriptions</span>
-                    </li>
-                    <li className="flex items-start">
-                      <CheckCircle className="w-5 h-5 text-primary mr-2 mt-0.5 flex-shrink-0" />
-                      <span>Track your health metrics and progress</span>
-                    </li>
-                  </ul>
-                </div>
-                <div className="p-8 pt-0 mt-auto">
-                  <Link to="/patient-portal">
-                    <Button variant="primary" size="lg" className="w-full">
-                      <User className="w-4 h-4 mr-2" />
-                      Access Patient Portal
-                    </Button>
-                  </Link>
-                </div>
-              </Card>
-            </motion.div>
-
-            {/* Doctor Portal Card */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.2 }}
-            >
-              <Card premium hover className="h-full flex flex-col">
-                <div className="p-8 flex-1">
-                  <div className="w-16 h-16 rounded-2xl bg-amber-100 flex items-center justify-center mb-6">
-                    <Stethoscope className="w-8 h-8 text-secondary" />
-                  </div>
-                  <h3 className="text-2xl font-bold mb-4">Doctor Portal</h3>
-                  <p className="text-muted-foreground mb-6">
-                    Designed for healthcare professionals to manage patient appointments, access medical records, and update treatment plans efficiently.
-                  </p>
-                  <ul className="space-y-3 mb-8">
-                    <li className="flex items-start">
-                      <CheckCircle className="w-5 h-5 text-secondary mr-2 mt-0.5 flex-shrink-0" />
-                      <span>Manage your patient appointments</span>
-                    </li>
-                    <li className="flex items-start">
-                      <CheckCircle className="w-5 h-5 text-secondary mr-2 mt-0.5 flex-shrink-0" />
-                      <span>Update patient records and prescriptions</span>
-                    </li>
-                    <li className="flex items-start">
-                      <CheckCircle className="w-5 h-5 text-secondary mr-2 mt-0.5 flex-shrink-0" />
-                      <span>Collaborate with other healthcare professionals</span>
-                    </li>
-                  </ul>
-                </div>
-                <div className="p-8 pt-0 mt-auto">
-                  <Link to="/doctor-portal">
-                    <Button variant="secondary" size="lg" className="w-full">
-                      <Stethoscope className="w-4 h-4 mr-2" />
-                      Access Doctor Portal
-                    </Button>
-                  </Link>
-                </div>
-              </Card>
-            </motion.div>
-          </div>
         </div>
       </section>
       
@@ -1391,6 +1210,7 @@ const Index = () => {
 
       <Footer />
     </div>
+    </>
   );
 };
 

@@ -98,6 +98,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await signOut(auth);
       setUserRole(null);
       console.log('User logged out successfully');
+      // Note: We don't include navigation here because useNavigate can only be used in components
+      // Navigation to homepage will be handled by the component calling logout
     } catch (error) {
       console.error('Logout error:', error);
       throw error;

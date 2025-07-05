@@ -539,32 +539,92 @@ const AppointmentBooking: React.FC = () => {
     <div className="min-h-screen bg-background">
       <Navigation />
       
-      {/* Hero Section with Background Image */}
-      <section className="relative py-16 md:py-24 bg-gradient-to-r from-primary to-secondary overflow-hidden">
-        <div className="absolute inset-0 opacity-10">
-          <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-            <defs>
-              <radialGradient id="radialGradient" cx="50%" cy="50%" r="50%" fx="50%" fy="50%">
-                <stop offset="0%" stopColor="white" stopOpacity="0.3" />
-                <stop offset="100%" stopColor="white" stopOpacity="0" />
-              </radialGradient>
-            </defs>
-            <circle cx="50" cy="50" r="50" fill="url(#radialGradient)" />
-          </svg>
+      {/* Modern Hero Section with Consistent Design */}
+      <section className="relative min-h-[70vh] flex items-center justify-center overflow-hidden">
+        {/* Layered background elements */}
+        <div className="absolute inset-0 w-full h-full">
+          {/* Base image with modern medical theme */}
+          <img
+            src="https://images.unsplash.com/photo-1584982751601-97dcc096659c?w=1920&h=1080&fit=crop&q=80"
+            alt="Medical appointment"
+            className="absolute inset-0 w-full h-full object-cover"
+          />
+          
+          {/* Gradient overlays for depth and text contrast */}
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/95 via-primary/85 to-secondary/90 z-10"></div>
+          <div className="absolute inset-0 bg-black/30 z-[9]"></div>
+          <div className="absolute inset-0 bg-[url('/src/assets/pattern-dot.svg')] opacity-10 z-[11]"></div>
+          
+          {/* Animated blob elements */}
+          <div className="absolute top-[20%] left-[10%] w-[500px] h-[500px] rounded-full bg-accent/10 mix-blend-overlay animate-blob animation-delay-2000 z-[12]"></div>
+          <div className="absolute bottom-[20%] right-[10%] w-[600px] h-[600px] rounded-full bg-secondary/10 mix-blend-overlay animate-blob z-[12]"></div>
+          <div className="absolute top-[60%] right-[20%] w-[400px] h-[400px] rounded-full bg-primary-light/10 mix-blend-overlay animate-blob animation-delay-4000 z-[12]"></div>
+          
+          {/* Floating geometric shapes */}
+          <motion.div 
+            className="absolute top-[20%] right-[20%] w-24 h-24 border-2 border-white/10 rounded-lg z-[13] hidden md:block"
+            animate={{ 
+              rotate: 360,
+              y: [0, 15, 0],
+            }}
+            transition={{ 
+              rotate: { duration: 20, repeat: Infinity, ease: "linear" },
+              y: { duration: 8, repeat: Infinity, ease: "easeInOut" }
+            }}
+          ></motion.div>
+          
+          {/* Particle effects */}
+          <div className="absolute inset-0 z-[14]">
+            {[...Array(8)].map((_, i) => (
+              <motion.div
+                key={i}
+                className="absolute w-1 h-1 bg-white/20 rounded-full hidden md:block"
+                style={{
+                  top: `${Math.random() * 100}%`,
+                  left: `${Math.random() * 100}%`,
+                }}
+                animate={{
+                  opacity: [0, 1, 0],
+                  scale: [0, 1.5, 0],
+                }}
+                transition={{
+                  duration: Math.random() * 3 + 2,
+                  repeat: Infinity,
+                  delay: Math.random() * 5,
+                }}
+              />
+            ))}
+          </div>
         </div>
         
-        <div className="container-hospital relative z-10 px-4 text-center">
+        {/* Hero Content */}
+        <div className="container-hospital relative z-20 px-6 py-16 md:py-24 max-w-7xl mx-auto">
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.6 }}
+            transition={{ duration: 0.8, ease: "easeOut" }}
+            className="text-center max-w-4xl mx-auto"
           >
-            <h1 className="text-4xl md:text-5xl font-bold text-white mb-4">
-              Book Your <span className="text-gradient bg-gradient-to-r from-accent to-white bg-clip-text text-transparent">Appointment</span>
-            </h1>
-            <p className="text-lg md:text-xl text-white/80 max-w-3xl mx-auto">
-              Schedule a visit with our expert medical professionals for personalized care and treatment.
-            </p>
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2, duration: 0.6 }}
+            >
+              <div className="inline-flex items-center px-5 py-3 rounded-full bg-white/15 backdrop-blur-lg text-base font-medium text-white shadow-glow mb-6">
+                <div className="relative mr-3">
+                  <div className="w-3 h-3 rounded-full bg-accent animate-pulse-soft"></div>
+                  <div className="absolute -inset-1 rounded-full bg-accent/30 animate-ripple"></div>
+                </div>
+                Schedule Your Visit
+              </div>
+              
+              <h1 className="text-5xl md:text-6xl lg:text-7xl font-bold text-white mb-6 leading-tight">
+                Book Your <span className="text-gradient bg-gradient-to-r from-accent to-white bg-clip-text text-transparent">Appointment</span>
+              </h1>
+              <p className="text-xl md:text-2xl text-white/90 max-w-3xl mx-auto mb-10 leading-relaxed backdrop-blur-sm bg-white/5 p-5 rounded-xl border border-white/10">
+                Schedule a visit with our expert medical professionals for personalized care and treatment tailored to your health needs.
+              </p>
+            </motion.div>
           </motion.div>
         </div>
       </section>

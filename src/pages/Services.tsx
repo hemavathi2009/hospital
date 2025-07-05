@@ -3,7 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { motion, useScroll, useTransform } from 'framer-motion';
 import { collection, getDocs, query, orderBy, onSnapshot, where } from 'firebase/firestore';
 import { db } from '../lib/firebase';
-import { Search, Filter, ChevronDown, X, Calendar } from 'lucide-react';
+import { Search, Filter, ChevronDown, X, Calendar, Brain, Heart, Users } from 'lucide-react';
 import { Service } from '../types/service';
 import { getVisibleServices } from '../lib/serviceFirebase';
 
@@ -283,6 +283,14 @@ const Services: React.FC = () => {
     };
   }, []);
 
+  // Helper function to scroll to a section by selector
+  const scrollToSection = (selector: string) => {
+    const element = document.querySelector(selector);
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   // Animation variants
   const containerVariants = {
     hidden: { opacity: 0 },
@@ -311,51 +319,100 @@ const Services: React.FC = () => {
     <div className="min-h-screen bg-background">
       <Navigation />
       
-      {/* Enlarged Hero Section with Enhanced Visual Elements */}
+      {/* Modern Hero Section with Video Background and Enhanced Visual Elements */}
       <section className="relative min-h-[90vh] flex items-center justify-center overflow-hidden">
-        {/* Background Image with Enhanced Overlay */}
+        {/* Layered Background with Video */}
         <div className="absolute inset-0 w-full h-full">
-          {/* Improved gradient overlay for better text contrast */}
-          <div className="absolute inset-0 bg-gradient-to-r from-primary/95 via-primary/85 to-secondary/95 z-10"></div>
-          <div className="absolute inset-0 bg-black/30 z-[9]"></div>
-          <img
-            src="https://images.unsplash.com/photo-1581056771107-24ca5f033842?w=1920&h=1080&fit=crop"
-            alt="Medical services"
-            className="absolute inset-0 w-full h-full object-cover"
-          />
+          {/* Video Background - Similar to Index page for consistency */}
+          <div className="absolute inset-0 z-10">
+            <video
+              autoPlay
+              loop
+              muted
+              playsInline
+              className="absolute inset-0 w-full h-full object-cover"
+            >
+              <source src="https://player.vimeo.com/progressive_redirect/playback/499921599/rendition/720p/file.mp4?loc=external&signature=3d5f15fea5ee324f4f2e9549c95c9b827a5ea0b2d4e41c1d9b7ac49e4a0e0efa" type="video/mp4" />
+              {/* Fallback image for browsers that don't support video */}
+              <img
+                src="https://images.unsplash.com/photo-1631217868264-e5b90bb7e133?w=1920&h=1080&fit=crop"
+                alt="Advanced medical facility"
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+            </video>
+          </div>
           
-          {/* Enhanced pattern overlay for better text visibility */}
-          <div className="absolute inset-0 bg-grid-pattern opacity-20 z-[11]"></div>
-          <div className="absolute inset-0 bg-[radial-gradient(circle,rgba(255,255,255,0.1)_1px,transparent_1px)] bg-[length:20px_20px] z-[12] opacity-30"></div>
+          {/* Improved gradient overlays for depth and text contrast */}
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/95 via-primary/85 to-secondary/90 z-20"></div>
+          <div className="absolute inset-0 bg-black/30 z-[19]"></div>
           
-          {/* Animated gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-tr from-accent/5 to-transparent animate-pulse-slow z-[13] opacity-60"></div>
-        
-          {/* Decorative elements */}
-          <div className="absolute top-20 right-20 w-32 h-32 border-4 border-white/5 rounded-full animate-spin-slow hidden md:block"></div>
-          <div className="absolute top-40 left-[10%] w-20 h-20 border-2 border-accent/20 rounded-full animate-bounce-slow hidden md:block"></div>
+          {/* Modern pattern overlay */}
+          <div className="absolute inset-0 bg-[url('/src/assets/pattern-dot.svg')] opacity-10 z-[21]"></div>
+          <div className="absolute inset-0 bg-[radial-gradient(circle,rgba(255,255,255,0.1)_1px,transparent_1px)] bg-[length:20px_20px] z-[22] opacity-30"></div>
           
-          {/* Medical icons */}
-          <svg className="absolute bottom-[20%] left-[5%] w-16 h-16 text-white/10 animate-float-slow hidden md:block" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          {/* Animated blob elements - Consistent with other pages */}
+          <div className="absolute top-[20%] left-[10%] w-[500px] h-[500px] rounded-full bg-accent/10 mix-blend-overlay animate-blob animation-delay-2000 z-[23]"></div>
+          <div className="absolute bottom-[20%] right-[10%] w-[600px] h-[600px] rounded-full bg-secondary/10 mix-blend-overlay animate-blob z-[23]"></div>
+          <div className="absolute top-[60%] right-[20%] w-[400px] h-[400px] rounded-full bg-primary-light/10 mix-blend-overlay animate-blob animation-delay-4000 z-[23]"></div>
+          
+          {/* Decorative geometric elements */}
+          <motion.div 
+            className="absolute top-[20%] right-[20%] w-24 h-24 border-2 border-white/10 rounded-lg z-[24] hidden md:block"
+            animate={{ 
+              rotate: 360,
+              y: [0, 15, 0],
+            }}
+            transition={{ 
+              rotate: { duration: 20, repeat: Infinity, ease: "linear" },
+              y: { duration: 8, repeat: Infinity, ease: "easeInOut" }
+            }}
+          ></motion.div>
+          <div className="absolute top-40 left-[10%] w-20 h-20 border-2 border-accent/20 rounded-full animate-bounce-slow hidden md:block z-[24]"></div>
+          
+          {/* Medical icons with enhanced visibility */}
+          <svg className="absolute bottom-[20%] left-[5%] w-16 h-16 text-white/20 animate-float-slow hidden md:block z-[24]" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M19 3H5C3.89543 3 3 3.89543 3 5V19C3 20.1046 3.89543 21 5 21H19C20.1046 21 21 20.1046 21 19V5C21 3.89543 20.1046 3 19 3Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             <path d="M12 8V16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             <path d="M8 12H16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
           
-          <svg className="absolute top-[30%] right-[10%] w-20 h-20 text-white/10 animate-float-slow hidden md:block" style={{ animationDelay: '1s' }} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <svg className="absolute top-[30%] right-[10%] w-20 h-20 text-white/20 animate-float-slow hidden md:block z-[24]" style={{ animationDelay: '1s' }} viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
             <path d="M22 12H2" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             <path d="M12 2V22" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             <path d="M17 3.5C17.8284 4.32843 18.5 5.35857 19 6.5C19.5 7.64143 19.8284 8.82843 20 10.1716" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             <path d="M3.5 17C4.32843 16.1716 5.35857 15.5 6.5 15C7.64143 14.5 8.82843 14.1716 10.1716 14" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
+          
+          {/* Particle effects for dynamic visual interest */}
+          <div className="absolute inset-0 z-[25]">
+            {[...Array(8)].map((_, i) => (
+              <motion.div
+                key={i}
+                className="absolute w-1 h-1 bg-white/20 rounded-full hidden md:block"
+                style={{
+                  top: `${Math.random() * 100}%`,
+                  left: `${Math.random() * 100}%`,
+                }}
+                animate={{
+                  opacity: [0, 1, 0],
+                  scale: [0, 1.5, 0],
+                }}
+                transition={{
+                  duration: Math.random() * 3 + 2,
+                  repeat: Infinity,
+                  delay: Math.random() * 5,
+                }}
+              />
+            ))}
+          </div>
         </div>
         
-        {/* Enhanced Hero Content */}
+        {/* Enhanced Hero Content with Modern Design */}
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8 }}
-          className="relative z-20 container-hospital py-28"
+          className="relative z-40 container-hospital py-28"
         >
           <div className="grid lg:grid-cols-2 gap-12 items-center">
             <div className="space-y-8">
@@ -369,71 +426,41 @@ const Services: React.FC = () => {
                   <div className="w-3 h-3 rounded-full bg-accent animate-pulse-soft"></div>
                   <div className="absolute -inset-1 rounded-full bg-accent/30 animate-ripple"></div>
                 </div>
-                Comprehensive Healthcare
+                <span className="text-white/90">Advanced Healthcare Excellence</span>
               </motion.div>
               
-              <h1 className="text-5xl lg:text-8xl font-bold leading-tight text-white drop-shadow-lg">
-                {/* Redesigned "Our Medical Services" for premium look and visibility */}
-                <span className="block">
-                  <span className="text-[2.7rem] lg:text-[5rem] font-extrabold tracking-tight relative z-20">
-                    <span
-                      className="
-                        // bg-gradient-to-r from-[#1e293b] via-primary to-[#eab308]
-                        // bg-clip-text text-transparent
-                        // drop-shadow-[0_2px_16px_rgba(30,41,59,0.25)]
-                        // shadow-black/30
-                        relative
-                      "
-                      style={{
-                        WebkitTextStroke: '1.5px rgba(255,255,255,0.18)',
-                        filter: 'brightness(0.95) contrast(1.15)',
-                      }}
-                    >
-                      Our Medical&nbsp;
+              <h1 className="text-5xl lg:text-7xl font-bold leading-tight text-white drop-shadow-lg">
+                <div className="flex flex-col">
+                  <span className="text-[2.7rem] lg:text-[4.5rem] font-extrabold tracking-tight relative z-20 mb-2">
+                    <span className="relative inline-block">
                       <span className="relative">
-                        <span
-                          className="
-                            bg-gradient-to-r from-accent via-primary to-white
-                            bg-clip-text text-transparent
-                            font-extrabold
-                            animate-pulse-slow
-                            shadow-glow
-                            px-2
-                            rounded
-                            relative
-                            z-20
-                          "
-                          style={{
-                            WebkitTextStroke: '1.5px rgba(255,255,255,0.22)',
-                            filter: 'brightness(0.93) contrast(1.18)',
-                          }}
-                        >
-                          Services
-                        </span>
-                        {/* Subtle glow and outline for visibility */}
-                        <span
-                          className="absolute -inset-2 rounded blur-[6px] bg-accent/20 opacity-60 -z-10"
-                          aria-hidden="true"
-                        />
+                        Discover Our&nbsp;
+                      </span>
+                      <span className="text-gradient bg-gradient-to-r from-accent via-white to-accent bg-clip-text text-transparent font-extrabold relative">
+                        Medical
                       </span>
                     </span>
                   </span>
+                  <span className="text-[2.7rem] lg:text-[4.5rem] font-extrabold tracking-tight relative z-20">
+                    <span className="text-gradient bg-gradient-to-r from-white via-accent to-white bg-clip-text text-transparent font-extrabold relative">
+                      Services
+                    </span>
+                  </span>
                   {/* Enhanced underline effect */}
-                  <span className="block mt-2 w-full h-2 relative">
+                  <span className="block mt-3 w-full h-2 relative">
                     <span className="absolute left-0 right-0 h-2 bg-gradient-to-r from-accent/30 via-primary/40 to-white/10 rounded-full blur-[2px] opacity-80"></span>
                     <span className="absolute left-1/4 right-1/4 h-1 bg-accent/60 rounded-full blur-[1px] opacity-70"></span>
                   </span>
-                </span>
+                </div>
               </h1>
               
               <motion.p 
                 initial={{ opacity: 0, y: 30 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.6, duration: 0.8 }}
-                className="text-xl md:text-2xl text-white leading-relaxed max-w-2xl font-light text-shadow-glow backdrop-blur-sm bg-white/5 p-6 rounded-xl border border-white/10"
+                className="text-xl md:text-2xl text-white leading-relaxed max-w-2xl font-light backdrop-blur-sm bg-white/5 p-6 rounded-xl border border-white/10 shadow-glow"
               >
-                Discover our wide range of specialized healthcare services designed to provide 
-                exceptional care for you and your family at every stage of life.
+                Experience our comprehensive range of specialized medical services delivered by expert specialists. From preventive care to advanced treatments, we're committed to providing exceptional care for your health and wellbeing.
               </motion.p>
               
               {/* Enhanced CTAs */}
@@ -451,113 +478,141 @@ const Services: React.FC = () => {
                     <Button 
                       variant="accent" 
                       size="xl" 
-                      className="shadow-lg hover:shadow-xl text-lg px-8 py-6 font-bold"
+                      className="shadow-lg hover:shadow-xl hover:shadow-accent/20 text-lg px-8 py-6 font-bold transition-all duration-300 hover:-translate-y-1 whitespace-nowrap"
                     >
                       <span className="flex items-center">
-                        <svg className="w-6 h-6 mr-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M19 4H5C3.89543 4 3 4.89543 3 6V20C3 21.1046 3.89543 22 5 22H19C20.1046 22 21 21.1046 21 20V6C21 4.89543 20.1046 4 19 4Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          <path d="M16 2V6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          <path d="M8 2V6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          <path d="M3 10H21" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          <path d="M8 14H8.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          <path d="M12 14H12.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          <path d="M16 14H16.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          <path d="M8 18H8.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          <path d="M12 18H12.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          <path d="M16 18H16.01" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                        Book an Appointment
+                        <Calendar className="w-5 h-5 mr-2" />
+                        Schedule an Appointment
                       </span>
                     </Button>
                   </motion.div>
                 </Link>
                 
-                <Link to="#service-list">
-                  <motion.div 
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.98 }}
+                <motion.div 
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.98 }}
+                  onClick={() => document.getElementById('services-list')?.scrollIntoView({ behavior: 'smooth' })}
+                >
+                  <Button 
+                    variant="outline" 
+                    size="xl" 
+                    className="bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/20 text-lg px-8 py-6 font-bold transition-all duration-300 hover:-translate-y-1"
                   >
-                    <Button 
-                      variant="outline" 
-                      size="xl" 
-                      className="bg-white/10 backdrop-blur-md border border-white/20 text-white hover:bg-white/20 text-lg px-8 py-6 font-bold"
-                    >
-                      <span className="flex items-center">
-                        <svg className="w-6 h-6 mr-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                          <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          <path d="M12 8V16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                          <path d="M8 12H16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                        </svg>
-                        Explore Services
-                      </span>
-                    </Button>
-                  </motion.div>
-                </Link>
+                    <span className="flex items-center">
+                      <svg className="w-5 h-5 mr-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M12 22C17.5228 22 22 17.5228 22 12C22 6.47715 17.5228 2 12 2C6.47715 2 2 6.47715 2 12C2 17.5228 6.47715 22 12 22Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M12 8V16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                        <path d="M8 12H16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                      </svg>
+                      Explore All Services
+                    </span>
+                  </Button>
+                </motion.div>
               </motion.div>
                 
             </div>
 
-            {/* Decorative Element */}
+            {/* Modernized Decorative Element */}
             <motion.div 
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.8, delay: 0.2 }}
+              transition={{ duration: 0.8, delay: 0.4 }}
               className="relative hidden lg:block"
             >
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-4">
-                  <div className="rounded-2xl overflow-hidden shadow-2xl h-64 transform translate-y-8">
+              <div className="grid grid-cols-2 gap-5 transform hover:scale-[1.02] transition-all duration-500">
+                <div className="space-y-5">
+                  <div className="rounded-2xl overflow-hidden shadow-2xl h-64 transform translate-y-8 group relative">
                     <img 
-                      src="https://images.unsplash.com/photo-1579684385127-1ef15d508118?w=500&h=750&fit=crop" 
-                      alt="Medical procedure"
-                      className="w-full h-full object-cover"
+                      src="https://images.unsplash.com/photo-1584982751601-97dcc096659c?w=500&h=750&fit=crop" 
+                      alt="Advanced medical technology"
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                     />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-60"></div>
+                    <div className="absolute bottom-0 left-0 p-4">
+                      <span className="text-white font-medium">Cutting-Edge Technology</span>
+                    </div>
                   </div>
-                  <div className="rounded-2xl overflow-hidden shadow-2xl h-44 bg-white p-6">
+                  <div className="rounded-2xl overflow-hidden shadow-2xl h-44 bg-gradient-to-br from-primary/90 to-secondary/90 p-6 transition-transform duration-300 hover:-translate-y-2">
                     <div className="flex items-center h-full">
                       <div className="space-y-2">
                         <div className="flex items-center">
-                          <span className="text-4xl font-bold text-primary">24/7</span>
+                          <span className="text-4xl font-bold text-white">24/7</span>
                         </div>
-                        <p className="text-muted-foreground">Emergency Care Available</p>
+                        <p className="text-white/90">Emergency Care Available</p>
                       </div>
                     </div>
                   </div>
                 </div>
                 
-                <div className="space-y-4">
-                  <div className="rounded-2xl overflow-hidden shadow-2xl h-44 bg-gradient-to-br from-accent to-secondary p-6">
+                <div className="space-y-5">
+                  <div className="rounded-2xl overflow-hidden shadow-2xl h-44 bg-white p-6 transition-transform duration-300 hover:-translate-y-2">
                     <div className="h-full flex flex-col justify-center">
-                      <h3 className="text-2xl font-bold text-white mb-2">50+</h3>
-                      <p className="text-white/90">Specialized Services</p>
+                      <div className="flex items-center space-x-2">
+                        <h3 className="text-3xl font-bold bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">50+</h3>
+                        <div className="w-8 h-8 rounded-full bg-primary/20 flex items-center justify-center">
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M5 12H19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                            <path d="M12 5L19 12L12 19" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                          </svg>
+                        </div>
+                      </div>
+                      <p className="text-muted-foreground">Specialized Services</p>
                     </div>
                   </div>
-                  <div className="rounded-2xl overflow-hidden shadow-2xl h-64 transform translate-y-(-8)">
+                  <div className="rounded-2xl overflow-hidden shadow-2xl h-64 group relative">
                     <img 
-                      src="https://images.unsplash.com/photo-1530026405186-ed1f139313f8?w=500&h=750&fit=crop" 
-                      alt="Medical consultation"
-                      className="w-full h-full object-cover"
+                      src="https://images.unsplash.com/photo-1666214280557-f1b5022eb634?w=500&h=750&fit=crop" 
+                      alt="Doctor consultation"
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
                     />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-60"></div>
+                    <div className="absolute bottom-0 left-0 p-4">
+                      <span className="text-white font-medium">Expert Consultations</span>
+                    </div>
                   </div>
                 </div>
               </div>
+              
+              {/* Floating badges */}
+              <motion.div 
+                className="absolute -top-5 -right-10 bg-white shadow-xl rounded-full py-2 px-4 flex items-center space-x-2 z-10"
+                animate={{ y: [0, -10, 0] }}
+                transition={{ duration: 4, repeat: Infinity, ease: "easeInOut" }}
+              >
+                <span className="w-3 h-3 rounded-full bg-emerald-500"></span>
+                <span className="text-sm font-medium">Award-Winning Care</span>
+              </motion.div>
+              
+              <motion.div 
+                className="absolute -bottom-5 -left-5 bg-white shadow-xl rounded-full py-2 px-4 flex items-center space-x-2 z-10"
+                animate={{ y: [0, 10, 0] }}
+                transition={{ duration: 5, repeat: Infinity, ease: "easeInOut", delay: 1 }}
+              >
+                <span className="w-3 h-3 rounded-full bg-primary"></span>
+                <span className="text-sm font-medium">Leading Specialists</span>
+              </motion.div>
             </motion.div>
           </div>
         </motion.div>
         
-          {/* Scroll indicator */}
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1.5, duration: 1 }}
-            className="absolute bottom-10 left-1/2 transform -translate-x-1/2 z-20 cursor-pointer"
-            onClick={() => document.getElementById('services-list')?.scrollIntoView({ behavior: 'smooth' })}
-          >
-            <div className="flex flex-col items-center text-white">
-              <span className="text-sm font-medium mb-2">Scroll to explore</span>
-              <ChevronDown className="w-6 h-6 animate-bounce" />
-            </div>
-          </motion.div>
+        {/* Enhanced scroll indicator */}
+        <motion.div 
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 1.5, duration: 1 }}
+          className="absolute bottom-10 left-1/2 transform -translate-x-1/2 z-40 cursor-pointer"
+          onClick={() => document.getElementById('services-list')?.scrollIntoView({ behavior: 'smooth' })}
+        >
+          <div className="flex flex-col items-center text-white">
+            <span className="text-sm font-medium mb-2 backdrop-blur-sm bg-white/10 px-4 py-2 rounded-full border border-white/10 hover:bg-white/20 transition-all duration-300">Explore Our Services</span>
+            <motion.div 
+              animate={{ y: [0, 5, 0] }}
+              transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
+            >
+              <ChevronDown className="w-6 h-6" />
+            </motion.div>
+          </div>
+        </motion.div>
         </section>
       
       {/* Services Categories Section */}
@@ -647,10 +702,11 @@ const Services: React.FC = () => {
             <Button
               variant="accent"
               size="xl"
-              className="shadow-xl hover:shadow-accent/30 transition-all duration-300 whitespace-nowrap"
-              onClick={() => navigate('/appointments')}
+              className="shadow-xl hover:shadow-accent/30 transition-all duration-300 whitespace-nowrap hover:-translate-y-1"
+              onClick={() => navigate('/appointment-booking')}
             >
-              Book Your Appointment
+              <Calendar className="w-5 h-5 mr-2" />
+              Schedule an Appointment
             </Button>
           </div>
         </div>

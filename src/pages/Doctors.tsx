@@ -133,7 +133,6 @@ const Doctors = () => {
 
   // Refs for animations
   const headerRef = useRef<HTMLDivElement>(null);
-  const filtersRef = useRef<HTMLDivElement>(null);
   const doctorsGridRef = useRef<HTMLDivElement>(null);
   const navigate = useNavigate();
   
@@ -174,13 +173,7 @@ const Doctors = () => {
         headerRef.current.style.opacity = opacity.toString();
       }
       
-      if (filtersRef.current) {
-        if (scrollPosition > 300) {
-          filtersRef.current.classList.add('sticky-filters');
-        } else {
-          filtersRef.current.classList.remove('sticky-filters');
-        }
-      }
+      // Filter section reference removed
     };
     
     window.addEventListener('scroll', handleScroll);
@@ -431,7 +424,7 @@ const Doctors = () => {
     <div className="min-h-screen bg-background">
       <Navigation />
       
-      {/* Hero Section - Enhanced & Enlarged */}
+      {/* Modern Hero Section with Consistent Design */}
       <motion.section 
         ref={headerRef}
         className="relative min-h-[90vh] flex items-center justify-center overflow-hidden bg-gradient-to-br from-primary/90 via-primary/80 to-secondary"
@@ -439,55 +432,35 @@ const Doctors = () => {
         animate="visible"
         variants={heroVariants}
       >
-        {/* Abstract background elements */}
+        {/* Layered background elements */}
         <div className="absolute inset-0 z-0 overflow-hidden">
+          {/* Video background with fallback image */}
+          <div className="absolute inset-0 w-full h-full">
+            <video 
+              className="absolute inset-0 w-full h-full object-cover opacity-20"
+              autoPlay 
+              muted 
+              loop 
+              playsInline
+            >
+              <source src="https://player.vimeo.com/progressive_redirect/playback/690177142/rendition/720p/file.mp4?loc=external&signature=d561c1bc9b89bfe5fc5fc0500bc8e3a6f65e9f31f1515926294bce99f7e0a6d0" type="video/mp4" />
+              {/* Fallback image */}
+              <img
+                src="https://images.unsplash.com/photo-1576091160550-2173dba999ef?w=1920&h=1080&fit=crop"
+                alt="Medical professionals"
+                className="absolute inset-0 w-full h-full object-cover"
+              />
+            </video>
+          </div>
+          
           {/* Animated blobs with larger size and more complex animation */}
           <div className="absolute top-1/4 left-1/4 w-[600px] h-[600px] rounded-full bg-accent/10 mix-blend-overlay animate-blob animation-delay-2000"></div>
           <div className="absolute top-1/2 right-1/4 w-[700px] h-[700px] rounded-full bg-secondary/10 mix-blend-overlay animate-blob"></div>
           <div className="absolute bottom-1/4 right-1/3 w-[500px] h-[500px] rounded-full bg-primary-light/10 mix-blend-overlay animate-blob animation-delay-4000"></div>
           <div className="absolute bottom-1/2 left-1/3 w-[300px] h-[300px] rounded-full bg-accent/5 mix-blend-overlay animate-blob animation-delay-3000"></div>
           
-          {/* Grid overlay with improved pattern */}
-          <div className="absolute inset-0 bg-grid-pattern opacity-5"></div>
-          
-          {/* Particle effect overlay */}
-          <div className="absolute inset-0 bg-particle-pattern opacity-10"></div>
-        </div>
-        
-        {/* Medical icons background */}
-        <div className="absolute inset-0 z-0 overflow-hidden">
-          {Array.from({ length: 10 }).map((_, i) => (
-            <motion.div
-              key={`icon-${i}`}
-              className="absolute opacity-5"
-              initial={{ 
-                x: Math.random() * 100 - 50, 
-                y: Math.random() * 100 - 50,
-                opacity: 0
-              }}
-              animate={{ 
-                x: Math.random() * 100 - 50, 
-                y: Math.random() * 100 - 50,
-                opacity: 0.1,
-                rotate: Math.random() * 360,
-                scale: Math.random() * 0.5 + 0.75
-              }}
-              transition={{
-                duration: Math.random() * 10 + 10,
-                repeat: Infinity,
-                repeatType: "reverse"
-              }}
-              style={{
-                top: `${Math.random() * 100}%`,
-                left: `${Math.random() * 100}%`,
-                fontSize: `${Math.random() * 3 + 2}rem`
-              }}
-            >
-              {[
-                "❤️", "🫀", "🧠", "👨‍⚕️", "👩‍⚕️", "🩺", "💊", "💉", "🩹", "🏥"
-              ][i % 10]}
-            </motion.div>
-          ))}
+          {/* Modern pattern overlay */}
+          <div className="absolute inset-0 bg-[url('/src/assets/pattern-dot.svg')] opacity-10 z-[11]"></div>
         </div>
         
         {/* Hero content container with improved layout */}
@@ -529,9 +502,9 @@ const Doctors = () => {
               </h1>
             </motion.div>
             
-            {/* Enhanced subtitle with 3D effect */}
+            {/* Enhanced subtitle with backdrop blur effect */}
             <motion.p 
-              className="text-2xl md:text-3xl text-white/90 max-w-3xl mx-auto mb-12 leading-relaxed font-light text-shadow-glow"
+              className="text-2xl md:text-3xl text-white/90 max-w-3xl mx-auto mb-12 leading-relaxed font-light backdrop-blur-sm bg-white/5 p-5 rounded-xl border border-white/10"
               variants={itemVariantHero}
             >
               Our team of highly qualified physicians brings years of experience 
@@ -617,78 +590,7 @@ const Doctors = () => {
         </svg>
       </motion.section>
       
-      {/* Filters Section - Keep unchanged */}
-      <section ref={filtersRef} className="py-8 bg-background border-b border-border z-20">
-        <div className="container-hospital px-4">
-          <div className="bg-white rounded-xl shadow-lg p-6 transition-all">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-              {/* Search */}
-              <div>
-                <Input
-                  label="Search Doctors"
-                  placeholder="Search by name or specialty..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  icon={<Search className="w-4 h-4" />}
-                  className="w-full"
-                />
-              </div>
-              
-              {/* Specialty Filter */}
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Specialty</label>
-                <div className="relative">
-                  <select
-                    value={selectedSpecialty}
-                    onChange={(e) => setSelectedSpecialty(e.target.value)}
-                    className="w-full p-3 rounded-xl border border-input bg-background focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200 appearance-none"
-                  >
-                    {specialtyOptions.map(specialty => (
-                      <option key={specialty} value={specialty}>{specialty}</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
-                </div>
-              </div>
-              
-              {/* Department Filter */}
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Department</label>
-                <div className="relative">
-                  <select
-                    value={selectedDepartment}
-                    onChange={(e) => setSelectedDepartment(e.target.value)}
-                    className="w-full p-3 rounded-xl border border-input bg-background focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200 appearance-none"
-                  >
-                    {departmentOptions.map(department => (
-                      <option key={department} value={department}>{department}</option>
-                    ))}
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
-                </div>
-              </div>
-              
-              {/* Availability Filter */}
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-2">Availability</label>
-                <div className="relative">
-                  <select
-                    value={availabilityFilter}
-                    onChange={(e) => setAvailabilityFilter(e.target.value)}
-                    className="w-full p-3 rounded-xl border border-input bg-background focus:border-primary focus:ring-2 focus:ring-primary/20 transition-all duration-200 appearance-none"
-                  >
-                    <option value="Any Time">Any Time</option>
-                    <option value="Today">Today</option>
-                    <option value="This Week">This Week</option>
-                    <option value="Custom Date">Custom Date</option>
-                  </select>
-                  <ChevronDown className="absolute right-3 top-1/2 transform -translate-y-1/2 text-muted-foreground w-4 h-4 pointer-events-none" />
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
+      {/* Filters section removed as requested */}
       
       {/* Doctors Grid */}
       <section className="py-16 bg-background" ref={doctorsGridRef}>
@@ -1595,16 +1497,7 @@ const Doctors = () => {
           text-shadow: 0 0 30px rgba(255, 255, 255, 0.2);
         }
         
-        .sticky-filters {
-          position: sticky;
-          top: 0;
-          z-index: 30;
-          background-color: rgba(255, 255, 255, 0.9);
-          backdrop-filter: blur(8px);
-          box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-          padding: 1rem 0;
-          transition: all 0.3s ease;
-        }
+        /* sticky-filters class removed */
         
         /* Custom scrollbar for date selector */
         .scrollbar-thin::-webkit-scrollbar {

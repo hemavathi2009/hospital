@@ -103,15 +103,15 @@ const DoctorPortal: React.FC = () => {
 
   useEffect(() => {
     if (!currentUser) {
-      // Redirect to sign-in page with doctor portal type pre-selected
-      navigate('/signin', { state: { userType: 'doctor' } });
+      // Redirect to signin page with doctor portal access code login preselected
+      navigate('/signin?userType=doctor&loginMethod=accessCode');
       return;
     }
     
     // First check if user has doctor role (only doctors or admins can access)
     if (userRole !== 'doctor' && userRole !== 'admin') {
       toast.error('Access denied. This portal is for verified doctors only.');
-      navigate('/');
+      navigate('/signin?userType=doctor&loginMethod=accessCode');
       return;
     }
 
@@ -132,17 +132,29 @@ const DoctorPortal: React.FC = () => {
         
         if (querySnapshot.empty) {
           toast.error('Your doctor account has not been verified by admin yet. Please contact administration for access.');
-          navigate('/');
+          navigate('/signin?userType=doctor&loginMethod=accessCode');
           return;
         }
         
-        // Doctor is verified, proceed to fetch data
+        // Check if this doctor has an access code (should have been used to login)
+        const accessCodesRef = collection(db, 'doctorAccessCodes');
+        const doctorId = querySnapshot.docs[0].id;
+        const accessCodeQuery = query(accessCodesRef, where('doctorId', '==', doctorId));
+        const accessCodeSnapshot = await getDocs(accessCodeQuery);
+        
+        if (accessCodeSnapshot.empty) {
+          toast.error('Access denied. You must use an access code to login to the doctor portal.');
+          navigate('/signin?userType=doctor&loginMethod=accessCode');
+          return;
+        }
+        
+        // Doctor is verified and has an access code, proceed to fetch data
         fetchDoctorData();
         fetchAppointments();
       } catch (error) {
         console.error('Error verifying doctor access:', error);
         toast.error('An error occurred while verifying your access.');
-        navigate('/');
+        navigate('/signin?userType=doctor&loginMethod=accessCode');
       }
     };
     
@@ -1217,9 +1229,57 @@ const DoctorPortal: React.FC = () => {
   return (
     <>
       <Navigation />
-      <main className="container-hospital mx-auto px-4 py-20 min-h-screen">
-        <div className="mt-8 mb-6">
-          <h1 className="text-3xl font-bold">Doctor Portal</h1>
+      
+      {/* Modern Hero Section with Consistent Design */}
+      <section className="relative py-16 overflow-hidden bg-gradient-to-br from-secondary/90 via-secondary/80 to-primary">
+        {/* Layered background elements */}
+        <div className="absolute inset-0 z-0 overflow-hidden">
+          {/* Background patterns */}
+          <div className="absolute inset-0 bg-[url('/src/assets/pattern-dot.svg')] opacity-10"></div>
+          
+          {/* Medical symbol background elements */}
+          <svg className="absolute top-[15%] left-[10%] w-16 h-16 text-white/10 animate-float-slow" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M19 3H5C3.89543 3 3 3.89543 3 5V19C3 20.1046 3.89543 21 5 21H19C20.1046 21 21 20.1046 21 19V5C21 3.89543 20.1046 3 19 3Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M12 8V16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M8 12H16" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          
+          <svg className="absolute bottom-[20%] right-[10%] w-20 h-20 text-white/10 animate-float-slow animation-delay-2000" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M8.5 14.5C5.5 11.5 5.5 6.5 8.5 3.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M15.5 3.5C18.5 6.5 18.5 11.5 15.5 14.5" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M12 4V6" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M12 10V12" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M3 22L7 18" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M17 18L21 22" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M12 13C12.5523 13 13 12.5523 13 12C13 11.4477 12.5523 11 12 11C11.4477 11 11 11.4477 11 12C11 12.5523 11.4477 13 12 13Z" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+            <path d="M7 18H17" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+          
+          {/* Animated blobs */}
+          <div className="absolute top-[20%] right-[15%] w-64 h-64 rounded-full bg-accent/20 mix-blend-overlay animate-blob animation-delay-2000"></div>
+          <div className="absolute bottom-[20%] left-[10%] w-72 h-72 rounded-full bg-primary/20 mix-blend-overlay animate-blob"></div>
+          <div className="absolute top-[60%] right-[20%] w-40 h-40 rounded-full bg-white/10 mix-blend-overlay animate-blob animation-delay-4000"></div>
+        </div>
+        
+        <div className="container-hospital relative z-10">
+          <div className="max-w-4xl mx-auto text-center text-white py-10">
+            <div className="inline-flex items-center px-4 py-2 rounded-full bg-white/10 backdrop-blur-md text-sm font-medium mb-6">
+              <div className="w-2 h-2 rounded-full bg-accent animate-pulse mr-2"></div>
+              <span>Healthcare Professional Access</span>
+            </div>
+            <h1 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight">
+              Welcome to Your <span className="text-gradient bg-gradient-to-r from-accent via-white to-accent bg-clip-text text-transparent">Doctor Portal</span>
+            </h1>
+            <p className="text-xl text-white/90 max-w-2xl mx-auto">
+              Manage patient appointments, access medical records, and deliver exceptional care with our comprehensive platform.
+            </p>
+          </div>
+        </div>
+      </section>
+      
+      <main className="container-hospital mx-auto px-4 py-10 min-h-screen">
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold">Doctor Dashboard</h2>
           <p className="text-muted-foreground mt-1">
             Manage your appointments, patients, and availability
           </p>

@@ -1,7 +1,8 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Button from '../atoms/Button';
-import { Calendar, Phone, MapPin, Clock } from 'lucide-react';
+import { Calendar, Phone, MapPin, Clock, Shield, Award, Users } from 'lucide-react';
+import { motion } from 'framer-motion';
 
 const HeroSection: React.FC = () => {
   const [isVisible, setIsVisible] = useState(false);
@@ -17,44 +18,81 @@ const HeroSection: React.FC = () => {
 
   return (
     <section className="relative min-h-screen flex items-center justify-center overflow-hidden">
-      {/* Background Image */}
-      <div 
-        className="absolute inset-0 bg-cover bg-center"
-        style={{
-          backgroundImage: `linear-gradient(rgba(59, 130, 246, 0.8), rgba(16, 185, 129, 0.8)), url('https://images.unsplash.com/photo-1576091160399-112ba8d25d1f?w=1920&h=1080&fit=crop')`
-        }}
-      ></div>
+      {/* Background with Layered Gradient Effect */}
+      <div className="absolute inset-0 w-full h-full">
+        {/* Base image */}
+        <div 
+          className="absolute inset-0 bg-cover bg-center"
+          style={{
+            backgroundImage: `url('https://images.unsplash.com/photo-1631217868264-e5b90bb7e133?w=1920&h=1080&fit=crop')`
+          }}
+        ></div>
+        
+        {/* Gradient overlay with enhanced colors */}
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/90 via-primary/80 to-secondary/90"></div>
+        
+        {/* Pattern overlay */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle,rgba(255,255,255,0.1)_1px,transparent_1px)] bg-[length:20px_20px] opacity-30"></div>
+        
+        {/* Animated accent circles */}
+        <div className="absolute top-[20%] left-[10%] w-64 h-64 rounded-full bg-accent/10 mix-blend-overlay animate-blob animation-delay-2000"></div>
+        <div className="absolute bottom-[20%] right-[10%] w-72 h-72 rounded-full bg-secondary/10 mix-blend-overlay animate-blob"></div>
+        <div className="absolute top-[60%] right-[20%] w-40 h-40 rounded-full bg-primary-light/10 mix-blend-overlay animate-blob animation-delay-4000"></div>
+      </div>
       
-      {/* Floating elements */}
-      <div className="absolute top-20 left-10 w-20 h-20 rounded-full bg-white/10 backdrop-blur-sm animate-float"></div>
-      <div className="absolute bottom-20 right-10 w-32 h-32 rounded-full bg-white/5 backdrop-blur-sm animate-float" style={{ animationDelay: '2s' }}></div>
-      <div className="absolute top-1/2 left-20 w-16 h-16 rounded-full bg-accent/20 backdrop-blur-sm animate-float" style={{ animationDelay: '4s' }}></div>
-
       <div className="relative z-10 container-hospital section-padding">
         <div className="grid lg:grid-cols-2 gap-12 items-center">
           {/* Hero Content */}
-          <div className={`space-y-8 ${isVisible ? 'fade-in-up' : 'opacity-0'}`}>
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8 }}
+            className="space-y-8"
+          >
             <div className="space-y-4">
-              <div className="inline-flex items-center px-4 py-2 rounded-full bg-white/10 backdrop-blur-md text-white text-sm font-medium">
-                <div className="w-2 h-2 rounded-full bg-accent mr-2 animate-pulse-soft"></div>
-                Award-Winning Healthcare Excellence
-              </div>
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.2, duration: 0.5 }}
+                className="inline-flex items-center px-4 py-2 rounded-full bg-white/10 backdrop-blur-md text-white text-sm font-medium"
+              >
+                <div className="relative mr-2">
+                  <div className="w-2 h-2 rounded-full bg-accent animate-pulse"></div>
+                  <div className="absolute -inset-1 rounded-full bg-accent/30 animate-ripple"></div>
+                </div>
+                Advanced Healthcare Excellence
+              </motion.div>
               
-              <h1 className="text-5xl lg:text-7xl font-bold text-white leading-tight">
-                Your Health,
+              <motion.h1 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.3, duration: 0.7 }}
+                className="text-5xl lg:text-7xl font-bold text-white leading-tight"
+              >
+                Leading the Way in
                 <span className="block text-gradient bg-gradient-to-r from-accent to-white bg-clip-text text-transparent">
-                  Our Priority
+                  Modern Medicine
                 </span>
-              </h1>
+              </motion.h1>
               
-              <p className="text-xl text-white/80 leading-relaxed max-w-2xl">
-                Experience world-class healthcare with our team of expert physicians, 
-                state-of-the-art facilities, and personalized care that puts you first.
-              </p>
+              <motion.p 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.4, duration: 0.7 }}
+                className="text-xl text-white/90 leading-relaxed max-w-2xl"
+              >
+                Experience next-generation healthcare with our team of renowned specialists, 
+                cutting-edge technologies, and personalized treatment plans designed for optimal outcomes.
+              </motion.p>
             </div>
 
             {/* CTA Buttons */}
-            <div className="flex flex-col sm:flex-row gap-4">
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.5, duration: 0.7 }}
+              className="flex flex-col sm:flex-row gap-4"
+            >
               <Button 
                 variant="accent" 
                 size="xl" 
@@ -62,85 +100,110 @@ const HeroSection: React.FC = () => {
                 className="shadow-2xl hover:shadow-3xl"
               >
                 <Calendar className="w-5 h-5 mr-2" />
-                Book Appointment
+                Schedule Appointment
               </Button>
 
               <Button 
                 variant="outline" 
                 size="xl"
-                className="border-white text-white hover:bg-white hover:text-primary shadow-2xl"
+                className="border-white text-white hover:bg-white hover:text-primary shadow-xl"
               >
                 <Phone className="w-5 h-5 mr-2" />
                 Emergency: 911
               </Button>
-            </div>
+            </motion.div>
 
             {/* Quick Info */}
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-8">
-              <div className="flex items-center text-white/80">
-                <Clock className="w-5 h-5 mr-3 text-accent" />
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6, duration: 0.7 }}
+              className="grid grid-cols-1 sm:grid-cols-3 gap-6 pt-4"
+            >
+              <div className="flex items-center text-white/90">
+                <Shield className="w-5 h-5 mr-3 text-accent" />
                 <div>
-                  <div className="font-medium">24/7 Emergency</div>
-                  <div className="text-sm">Always Available</div>
+                  <div className="font-medium">Trusted Care</div>
+                  <div className="text-sm text-white/80">97% Patient Satisfaction</div>
                 </div>
               </div>
-              <div className="flex items-center text-white/80">
-                <MapPin className="w-5 h-5 mr-3 text-accent" />
+              <div className="flex items-center text-white/90">
+                <Award className="w-5 h-5 mr-3 text-accent" />
                 <div>
-                  <div className="font-medium">Downtown Location</div>
-                  <div className="text-sm">Easy Access</div>
+                  <div className="font-medium">Award-Winning</div>
+                  <div className="text-sm text-white/80">Excellence in Healthcare</div>
                 </div>
               </div>
-              <div className="flex items-center text-white/80">
-                <Phone className="w-5 h-5 mr-3 text-accent" />
+              <div className="flex items-center text-white/90">
+                <Users className="w-5 h-5 mr-3 text-accent" />
                 <div>
-                  <div className="font-medium">+1 (555) 123-4567</div>
-                  <div className="text-sm">Call Anytime</div>
+                  <div className="font-medium">Expert Specialists</div>
+                  <div className="text-sm text-white/80">Board-Certified Physicians</div>
                 </div>
               </div>
-            </div>
-          </div>
+            </motion.div>
+          </motion.div>
 
           {/* Hero Visual */}
-          <div className={`relative ${isVisible ? 'fade-in-up' : 'opacity-0'}`} style={{ animationDelay: '0.3s' }}>
-            <div className="relative">
+          <motion.div
+            initial={{ opacity: 0, x: 30 }}
+            animate={{ opacity: 1, x: 0 }}
+            transition={{ delay: 0.3, duration: 0.8 }}
+            className="relative hidden lg:block"
+          >
+            {/* Main card */}
+            <div className="relative bg-white/10 backdrop-blur-lg p-2 rounded-3xl shadow-2xl overflow-hidden">
               {/* Main image */}
-              <div className="w-full h-96 lg:h-[500px] rounded-3xl overflow-hidden shadow-2xl">
+              <div className="w-full h-[500px] rounded-2xl overflow-hidden">
                 <img 
-                  src="https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=600&h=500&fit=crop" 
-                  alt="Professional medical team"
+                  src="https://images.unsplash.com/photo-1631815588090-d4bfec5b7dce?w=700&h=500&fit=crop" 
+                  alt="Advanced medical care"
                   className="w-full h-full object-cover"
                 />
               </div>
-
-              {/* Floating cards */}
-              <div className="absolute -top-4 -left-4 bg-white rounded-2xl p-4 shadow-2xl animate-float">
-                <div className="flex items-center space-x-3">
-                  <div className="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center">
-                    <div className="w-4 h-4 rounded-full bg-success"></div>
-                  </div>
-                  <div>
-                    <div className="font-semibold text-sm">Dr. Sarah Johnson</div>
-                    <div className="text-xs text-muted-foreground">Available Now</div>
-                  </div>
-                </div>
-              </div>
-
-              <div className="absolute -bottom-4 -right-4 bg-white rounded-2xl p-4 shadow-2xl animate-float" style={{ animationDelay: '1s' }}>
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-primary">4.9</div>
-                  <div className="text-xs text-muted-foreground">Patient Rating</div>
-                  <div className="flex justify-center mt-1">
-                    {[...Array(5)].map((_, i) => (
-                      <svg key={i} className="w-3 h-3 text-accent fill-current" viewBox="0 0 20 20">
-                        <path d="M9.049 2.927c.3-.921 1.603-.921 1.902 0l1.07 3.292a1 1 0 00.95.69h3.462c.969 0 1.371 1.24.588 1.81l-2.8 2.034a1 1 0 00-.364 1.118l1.07 3.292c.3.921-.755 1.688-1.54 1.118l-2.8-2.034a1 1 0 00-1.175 0l-2.8 2.034c-.784.57-1.838-.197-1.539-1.118l1.07-3.292a1 1 0 00-.364-1.118L2.98 8.72c-.783-.57-.38-1.81.588-1.81h3.461a1 1 0 00.951-.69l1.07-3.292z" />
-                      </svg>
-                    ))}
-                  </div>
-                </div>
-              </div>
+              
+              {/* Decorative border light */}
+              <div className="absolute inset-0 border border-white/20 rounded-3xl pointer-events-none"></div>
+              
+              {/* Glow effect */}
+              <div className="absolute -inset-2 bg-accent/20 rounded-full blur-3xl opacity-30 animate-pulse-slow"></div>
             </div>
-          </div>
+
+            {/* Floating cards */}
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6, duration: 0.5 }}
+              className="absolute -top-4 -left-4 bg-white rounded-2xl p-4 shadow-2xl"
+            >
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 rounded-full bg-success/10 flex items-center justify-center">
+                  <div className="w-4 h-4 rounded-full bg-success"></div>
+                </div>
+                <div>
+                  <div className="font-semibold text-sm">Advanced Imaging</div>
+                  <div className="text-xs text-muted-foreground">AI-Powered Diagnostics</div>
+                </div>
+              </div>
+            </motion.div>
+
+            <motion.div 
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.7, duration: 0.5 }}
+              className="absolute -bottom-4 -right-4 bg-white rounded-2xl p-4 shadow-2xl"
+            >
+              <div className="text-center">
+                <div className="text-2xl font-bold text-primary">24/7</div>
+                <div className="text-xs text-muted-foreground">Emergency Care</div>
+                <div className="flex justify-center mt-1">
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-success mr-1 animate-pulse"></span>
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-success mr-1 animate-pulse" style={{ animationDelay: '0.2s' }}></span>
+                  <span className="inline-block w-1.5 h-1.5 rounded-full bg-success animate-pulse" style={{ animationDelay: '0.4s' }}></span>
+                </div>
+              </div>
+            </motion.div>
+          </motion.div>
         </div>
       </div>
     </section>

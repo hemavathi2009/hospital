@@ -10,6 +10,7 @@ import {
   X
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth';
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -17,12 +18,13 @@ interface AdminLayoutProps {
 
 const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const navigate = useNavigate();
+  const { logout } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
   
   const handleLogout = async () => {
     try {
-      // Implement logout functionality here
-      navigate('/admin/login');
+      await logout();
+      navigate('/');
     } catch (error) {
       console.error('Failed to log out');
     }

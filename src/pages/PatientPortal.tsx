@@ -171,24 +171,70 @@ const PatientPortal = () => {
 
   useEffect(() => {
     if (!currentUser) {
-      // Redirect to sign-in page with patient portal type pre-selected
-      navigate('/signin', { state: { userType: 'patient' } });
+      // Redirect to signin page with patient portal access code login preselected
+      navigate('/signin?userType=patient&loginMethod=accessCode');
       return;
     }
     
-    // Check if user is a patient
+    // Check if user is a patient or admin (admins can access all portals)
     if (userRole && userRole !== 'patient' && userRole !== 'admin') {
       toast.error('Access denied. This portal is for patients only.');
-      navigate('/');
+      navigate('/signin?userType=patient&loginMethod=accessCode');
       return;
     }
     
-    fetchUserAppointments();
-    fetchPatientProfile();
-    fetchMedicalRecords();
-    fetchPrescriptions();
-    fetchNotifications();
-    fetchHealthMetrics();
+    // Verify that the patient exists and has an access code
+    const verifyPatientAccess = async () => {
+      try {
+        if (userRole === 'admin') {
+          // Admin can always access
+          fetchUserAppointments();
+          fetchPatientProfile();
+          fetchMedicalRecords();
+          fetchPrescriptions();
+          fetchNotifications();
+          fetchHealthMetrics();
+          return;
+        }
+        
+        // For patients, verify that they have an access code
+        const patientsRef = collection(db, 'patients');
+        const q = query(patientsRef, where('email', '==', currentUser?.email));
+        const querySnapshot = await getDocs(q);
+        
+        if (querySnapshot.empty) {
+          toast.error('Your patient account has not been registered. Please contact the hospital for assistance.');
+          navigate('/signin?userType=patient&loginMethod=accessCode');
+          return;
+        }
+        
+        // Check if this patient has an access code (should have been used to login)
+        const accessCodesRef = collection(db, 'accessCodes');
+        const patientId = querySnapshot.docs[0].id;
+        const accessCodeQuery = query(accessCodesRef, where('patientId', '==', patientId));
+        const accessCodeSnapshot = await getDocs(accessCodeQuery);
+        
+        if (accessCodeSnapshot.empty) {
+          toast.error('Access denied. You must use an access code to login to the patient portal.');
+          navigate('/signin?userType=patient&loginMethod=accessCode');
+          return;
+        }
+        
+        // Patient is verified and has an access code, proceed to fetch data
+        fetchUserAppointments();
+        fetchPatientProfile();
+        fetchMedicalRecords();
+        fetchPrescriptions();
+        fetchNotifications();
+        fetchHealthMetrics();
+      } catch (error) {
+        console.error('Error verifying patient access:', error);
+        toast.error('An error occurred while verifying your access.');
+        navigate('/signin?userType=patient&loginMethod=accessCode');
+      }
+    };
+    
+    verifyPatientAccess();
   }, [currentUser, userRole, navigate]);
 
   const fetchUserAppointments = async () => {
@@ -1414,11 +1460,45 @@ const PatientPortal = () => {
   return (
     <>
       <Navigation />
-      <main className="container-hospital mx-auto px-4 py-20 min-h-screen">
-        <div className="mt-8 mb-6">
-          <h1 className="text-3xl font-bold">Patient Portal</h1>
+      
+      {/* Modern Hero Section with Consistent Design */}
+      <section className="relative py-16 overflow-hidden bg-gradient-to-br from-primary/90 via-primary/80 to-secondary">
+        {/* Layered background elements */}
+        <div className="absolute inset-0 z-0 overflow-hidden">
+          {/* Background patterns */}
+          <div className="absolute inset-0 bg-[url('/src/assets/pattern-dot.svg')] opacity-10"></div>
+          
+          {/* Animated blobs */}
+          <div className="absolute top-[20%] left-[10%] w-64 h-64 rounded-full bg-accent/20 mix-blend-overlay animate-blob animation-delay-2000"></div>
+          <div className="absolute bottom-[20%] right-[10%] w-72 h-72 rounded-full bg-secondary/20 mix-blend-overlay animate-blob"></div>
+          <div className="absolute top-[60%] right-[20%] w-40 h-40 rounded-full bg-white/10 mix-blend-overlay animate-blob animation-delay-4000"></div>
+          
+          {/* Abstract shapes */}
+          <div className="absolute bottom-[30%] left-[20%] w-32 h-32 border-2 border-white/10 rounded-lg rotate-45 animate-float-slow"></div>
+          <div className="absolute top-[30%] right-[30%] w-24 h-24 border border-accent/20 rounded-full animate-pulse-slow"></div>
+        </div>
+        
+        <div className="container-hospital relative z-10">
+          <div className="max-w-4xl mx-auto text-center text-white py-10">
+            <div className="inline-flex items-center px-4 py-2 rounded-full bg-white/10 backdrop-blur-md text-sm font-medium mb-6">
+              <div className="w-2 h-2 rounded-full bg-accent animate-pulse mr-2"></div>
+              <span>Your Health Dashboard</span>
+            </div>
+            <h1 className="text-4xl md:text-5xl font-bold mb-4 tracking-tight">
+              Welcome to Your <span className="text-gradient bg-gradient-to-r from-accent via-white to-accent bg-clip-text text-transparent">Patient Portal</span>
+            </h1>
+            <p className="text-xl text-white/90 max-w-2xl mx-auto">
+              Manage your appointments, view medical records, and access personalized healthcare services all in one place.
+            </p>
+          </div>
+        </div>
+      </section>
+      
+      <main className="container-hospital mx-auto px-4 py-10 min-h-screen">
+        <div className="mb-6">
+          <h2 className="text-2xl font-bold">Your Health Dashboard</h2>
           <p className="text-muted-foreground mt-1">
-            Manage your appointments, view medical records, and access healthcare services
+            Manage your healthcare journey with our comprehensive tools
           </p>
         </div>
 

@@ -10,6 +10,7 @@ import {
   X
 } from 'lucide-react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useAuth } from '../../hooks/useAuth';
 
 interface AdminLayoutProps {
   children: ReactNode;
@@ -18,12 +19,13 @@ interface AdminLayoutProps {
 const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { logout } = useAuth();
   const [isSidebarOpen, setIsSidebarOpen] = React.useState(true);
   
   const handleLogout = async () => {
     try {
-      // Implement logout functionality here
-      navigate('/admin/login');
+      await logout();
+      navigate('/');
     } catch (error) {
       console.error('Failed to log out');
     }
@@ -33,6 +35,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     { icon: LayoutDashboard, label: 'Dashboard', href: '/admin' },
     { icon: Calendar, label: 'Appointments', href: '/admin/appointments' },
     { icon: Users, label: 'Doctors', href: '/admin/doctors' },
+    { icon: Users, label: 'Patients', href: '/admin/patients' },
     { icon: FileText, label: 'Services', href: '/admin/services' },
     { icon: FileText, label: 'Blog', href: '/admin/blog' },
     { icon: Users, label: 'Users', href: '/admin/users' },

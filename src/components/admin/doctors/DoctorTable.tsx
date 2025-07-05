@@ -1,8 +1,10 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Edit2, Trash2, Eye, CheckCircle, XCircle, Clock } from 'lucide-react';
+import { Edit2, Trash2, Eye, CheckCircle, XCircle, Clock, Key, Clipboard, ClipboardCheck } from 'lucide-react';
 import Button from '../../../components/atoms/Button';
 import Badge from '../../../components/atoms/Badge';
+import { createDoctorAccessCode } from '../../../utils/accessCodes';
+import { toast } from 'sonner';
 
 interface Doctor {
   id: string;
@@ -17,17 +19,22 @@ interface Doctor {
   verified?: boolean;
   availability?: Record<string, string[]>;
   createdAt?: any;
+  accessCode?: string;
 }
 
 interface DoctorTableProps {
   doctors: Doctor[];
   onEdit: (doctor: Doctor) => void;
   onDelete: (doctor: Doctor) => void;
+  onAccessCodeGenerated?: (doctorId: string, code: string) => void;
 }
 
-const DoctorTable: React.FC<DoctorTableProps> = ({ doctors, onEdit, onDelete }) => {
+const DoctorTable: React.FC<DoctorTableProps> = ({ doctors, onEdit, onDelete, onAccessCodeGenerated }) => {
   // Get current day for availability check
   const today = new Date().toISOString().split('T')[0];
+  const [generatingCode, setGeneratingCode] = useState<string | null>(null);
+  const [doctorCodes, setDoctorCodes] = useState<Record<string, string>>({});
+  const [copied, setCopied] = useState<string | null>(null);
   
   const getAvailabilityStatus = (doctor: Doctor) => {
     if (!doctor.availability) return { status: 'unavailable', label: 'Not Available' };
@@ -59,6 +66,44 @@ const DoctorTable: React.FC<DoctorTableProps> = ({ doctors, onEdit, onDelete }) 
     return new Date(timestamp).toLocaleDateString();
   };
 
+  const handleGenerateAccessCode = async (doctorId: string) => {
+    try {
+      setGeneratingCode(doctorId);
+      
+      // Generate a permanent access code for the doctor
+      const result = await createDoctorAccessCode(doctorId);
+      
+      // Update the local state
+      setDoctorCodes(prev => ({
+        ...prev,
+        [doctorId]: result.code
+      }));
+      
+      // Notify parent component
+      if (onAccessCodeGenerated) {
+        onAccessCodeGenerated(doctorId, result.code);
+      }
+      
+      toast.success('Access code generated successfully');
+    } catch (error) {
+      console.error('Error generating access code:', error);
+      toast.error('Failed to generate access code');
+    } finally {
+      setGeneratingCode(null);
+    }
+  };
+
+  const copyAccessCodeToClipboard = (code: string, doctorId: string) => {
+    navigator.clipboard.writeText(code);
+    setCopied(doctorId);
+    toast.success('Access code copied to clipboard');
+    
+    // Reset after 2 seconds
+    setTimeout(() => {
+      setCopied(null);
+    }, 2000);
+  };
+
   return (
     <div className="w-full overflow-x-auto">
       <table className="min-w-full">
@@ -70,6 +115,7 @@ const DoctorTable: React.FC<DoctorTableProps> = ({ doctors, onEdit, onDelete }) 
             <th className="p-4 text-left text-sm font-medium text-muted-foreground">Experience</th>
             <th className="p-4 text-left text-sm font-medium text-muted-foreground">Status</th>
             <th className="p-4 text-left text-sm font-medium text-muted-foreground">Created</th>
+            <th className="p-4 text-left text-sm font-medium text-muted-foreground">Access Code</th>
             <th className="p-4 text-left text-sm font-medium text-muted-foreground">Actions</th>
           </tr>
         </thead>
@@ -138,6 +184,51 @@ const DoctorTable: React.FC<DoctorTableProps> = ({ doctors, onEdit, onDelete }) 
                     {formatDate(doctor.createdAt)}
                   </td>
                   <td className="p-4">
+                    {(doctorCodes[doctor.id] || doctor.accessCode) ? (
+                      <div>
+                        <div className="flex items-center space-x-1">
+                          <code className="bg-muted/30 px-2 py-1 rounded text-sm font-mono">
+                            {doctorCodes[doctor.id] || doctor.accessCode}
+                          </code>
+                          <button
+                            onClick={() => copyAccessCodeToClipboard(doctorCodes[doctor.id] || doctor.accessCode as string, doctor.id)}
+                            className="text-muted-foreground hover:text-foreground"
+                            title="Copy to clipboard"
+                          >
+                            {copied === doctor.id ? (
+                              <ClipboardCheck className="w-4 h-4 text-success" />
+                            ) : (
+                              <Clipboard className="w-4 h-4" />
+                            )}
+                          </button>
+                        </div>
+                        <div className="text-xs">
+                          <Badge variant="success" className="text-white">Permanent</Badge>
+                        </div>
+                      </div>
+                    ) : (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleGenerateAccessCode(doctor.id)}
+                        disabled={generatingCode === doctor.id}
+                        title="Generate a permanent access code for this doctor"
+                      >
+                        {generatingCode === doctor.id ? (
+                          <div className="flex items-center">
+                            <div className="w-3 h-3 border-2 border-primary border-t-transparent rounded-full animate-spin mr-2"></div>
+                            Generating...
+                          </div>
+                        ) : (
+                          <>
+                            <Key className="w-3 h-3 mr-2" />
+                            Generate Code
+                          </>
+                        )}
+                      </Button>
+                    )}
+                  </td>
+                  <td className="p-4">
                     <div className="flex items-center gap-2">
                       <Button 
                         variant="ghost" 
@@ -163,7 +254,7 @@ const DoctorTable: React.FC<DoctorTableProps> = ({ doctors, onEdit, onDelete }) 
           </AnimatePresence>
           {doctors.length === 0 && (
             <tr>
-              <td colSpan={7} className="p-8 text-center text-muted-foreground">
+              <td colSpan={8} className="p-8 text-center text-muted-foreground">
                 No doctors found. Add a new doctor to get started.
               </td>
             </tr>

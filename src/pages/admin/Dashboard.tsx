@@ -1566,6 +1566,15 @@ const AdminDashboard = () => {
                 <Button 
                   className="w-full justify-start"
                   variant="outline"
+                  onClick={() => navigate('/admin/patients')}
+                >
+                  <Users className="w-4 h-4 mr-2 text-indigo-500" />
+                  Manage Patients
+                </Button>
+                
+                <Button 
+                  className="w-full justify-start"
+                  variant="outline"
                   onClick={() => {
                     setActiveTab('services');
                     setServiceToEdit(null);
@@ -2338,6 +2347,12 @@ MediCare+ Hospital Team
             onClick={() => setActiveTab('doctors')}
           >
             Doctors
+          </Button>
+          <Button
+            variant={activeTab === 'patients' ? 'primary' : 'outline'}
+            onClick={() => navigate('/admin/patients')}
+          >
+            Patients
           </Button>
           <Button
             variant={activeTab === 'services' ? 'primary' : 'outline'}
